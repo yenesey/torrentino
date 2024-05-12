@@ -2,9 +2,8 @@ package torrserver
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
-
-	"log"
 
 	"net/http"
 	// "net/http/cookiejar"
@@ -20,32 +19,87 @@ type TSListItem struct {
 	Title        string
 	Torrent_Size int64
 	Hash         string
+	Data         string
+	DataStruct   struct {
+		Torrserver struct {
+			Files []struct {
+				Id     int
+				Path   string
+				Length int64
+			}
+		}
+	}
 }
 
 type TSList []TSListItem
 
-func ListItems() (*TSList, error) {
-	ts := &common.Settings.Torrserver
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", "http://"+ts.Host+":"+strconv.Itoa(ts.Port) + "/torrents", strings.NewReader("{\"action\" : \"list\"}"))
+var url = "http://" + common.Settings.Torrserver.Host + ":" + strconv.Itoa(common.Settings.Torrserver.Port) + "/torrents"
+
+/*
+   {
+   "action": "add/get/set/rem/list/drop",
+   "link": "hash/magnet/link to torrent",
+   "hash": "hash of torrent",
+   "title": "title of torrent",
+   "poster": "link to poster of torrent",
+   "data": "custom data of torrent, may be json",
+   "save_to_db": true/false
+   }
+*/
+
+func List() (*TSList, error) {
+
+	res, err := http.Post(
+		url,
+		"application/json",
+		strings.NewReader("{\"action\" : \"list\"}"),
+	)
 	if err != nil {
-		log.Fatal(err)
-	}
-	res, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	var List TSList
 	err = json.Unmarshal(data, &List)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
+	}
+
+	for i := range List {
+		err = json.Unmarshal([]byte(List[i].Data), &List[i].DataStruct)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &List, nil
 }
 
-func init() {
+func Add(link string, title string, poster string) error {
+
+	res, err := http.Post(
+		url,
+		"application/json",
+		strings.NewReader("{\"action\" : \"add\","+
+			"\"link\" : \""+link+"\","+
+			"\"title\" : \""+title+"\","+
+			"\"poster\" : \""+poster+"\","+
+			"\"save_to_db\" : true}"),
+	)
+	if res.StatusCode != 200 {
+		return fmt.Errorf("request error: %s", res.Status)
+	}
+	return err
+}
+
+func Delete(hash string) error {
+	_, err := http.Post(
+		url,
+		"application/json",
+		strings.NewReader(
+			"{\"action\" : \"rem\","+
+				"\"hash\" : \""+hash+"\"}"),
+	)
+	return err
 }

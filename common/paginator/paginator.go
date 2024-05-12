@@ -92,7 +92,7 @@ func (p *Paginator) Append(item any) {
 func (p *Paginator) Delete(i int) {
 	idx := p.index[i]
 	p.list = append(p.list[:idx], p.list[idx+1:]...)
-	p.index = append(p.index[:i], p.index[i+1:]...)
+	p.Filter() // <-- just for rebuild the indexes
 }
 
 func (p *Paginator) Item(i int) any {

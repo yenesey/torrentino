@@ -6,12 +6,15 @@ import (
 	"net/http"
 	"strconv"
 	"torrentino/api/jackett"
+	"torrentino/api/torrserver"
 	"torrentino/api/transmission"
 	"torrentino/common/paginator"
 	"torrentino/common/utils"
 
+	"github.com/antchfx/htmlquery"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"golang.org/x/net/html"
 )
 
 type ListItem struct {
@@ -44,11 +47,14 @@ func (p *FindPaginator) ItemString(item any) string {
 		return data.Title +
 			" [" + utils.FormatFileSize(int64(data.Size), 1024.0) + "] [" + data.TrackerId + "]" +
 			" [" + strconv.Itoa(int(data.Seeders)) + "s/" + strconv.Itoa(int(data.Peers)) + "p]" +
-			(func() string {
+			(func() (result string) {	
 				if data.InTorrents {
-					return " [downloading]"
+					result += " [->downloading]"
 				}
-				return ""
+				if data.InTorrserver {
+					result += " [->torrserver]"
+				}
+				return
 			})()
 
 	} else {
@@ -95,7 +101,6 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 func (p *FindPaginator) ItemActions(i int) (result []string) {
 
 	item := p.Item(i).(*ListItem)
-
 	if !item.InTorrents {
 		result = append(result, "download")
 	}
@@ -115,34 +120,39 @@ func (p *FindPaginator) ItemActions(i int) (result []string) {
 func (p *FindPaginator) ItemActionExec(i int, actionKey string) bool {
 
 	item := p.Item(i).(*ListItem)
+	
+	var urlOrMagnet string
+	if item.Link != "" {
+		urlOrMagnet = item.Link
+	} else {
+		urlOrMagnet = item.MagnetUri
+	}
 
-	if actionKey == "download" {
-		var urlOrMagnet string
-		if item.Link != "" {
-			urlOrMagnet = item.Link
-		} else {
-			urlOrMagnet = item.MagnetUri
-		}
+	switch actionKey {
+	case "download":
 		_, err := transmission.Add(urlOrMagnet)
 		if err != nil {
 			log.Fatal(err)
 		}
 		item.InTorrents = true
+	
+	case "torrsrv":
+		err := torrserver.Add(item.MagnetUri, item.Title, getPosterLinkFromPage(item.Details))
+		if err != nil {
+			log.Fatal(err)
+		}
+		item.InTorrserver = true
 
-	} else if actionKey == "web page" {
+	case "web page":
 		p.Bot.SendMessage(p.Ctx, &bot.SendMessageParams{
 			ChatID:      p.ChatID,
 			Text:        item.Details,
 			ParseMode:   models.ParseModeHTML,
 			ReplyMarkup: nil,
 		})
-	} else if actionKey == ".torrent" {
-		client := &http.Client{}
-		req, err := http.NewRequest("GET", item.Link, nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-		res, err := client.Do(req)
+
+	case ".torrent":
+		res, err := http.Get(item.Link)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -152,8 +162,8 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) bool {
 			ParseMode:   models.ParseModeHTML,
 			ReplyMarkup: nil,
 		})
-
 	}
+
 	return true
 }
 
@@ -173,6 +183,44 @@ func (p *FindPaginator) Reload() {
 }
 
 //-------------------------------------------------------------------------
+func getPosterLinkFromPage(url string) string {
+
+	var findKey = func(attr []html.Attribute, key string) string {
+		for i := range attr {
+			if attr[i].Key == key {
+				return attr[i].Val
+			}
+		}
+		return ""
+	}
+
+	doc, err := htmlquery.LoadURL(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	poster := htmlquery.Find(doc, "//var[@class=\"postImg postImgAligned img-right\"]") // rutracker
+	if len(poster) > 0 {
+		if res := findKey(poster[0].Attr, "title"); res != "" {
+			return res
+		}
+	}
+	poster = htmlquery.Find(doc, "//table[@id=\"details\"]/tr/td[2]/img") // rutor
+	if len(poster) > 0 {
+		if res := findKey(poster[0].Attr, "src"); res != "" {
+			return res
+		}
+	}
+	poster = htmlquery.Find(doc, "//table[@id=\"details\"]//img")
+	if len(poster) > 0 {
+		if res := findKey(poster[0].Attr, "src"); res != "" {
+			return res
+		}
+	}
+	return ""
+}
+
+
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var pg = NewPaginator(update.Message.Text)
 	pg.Sorting.Setup([]paginator.SortHeader{

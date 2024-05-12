@@ -125,6 +125,26 @@ func (p *ListPaginator) ItemActions(i int) (result []string) {
 }
 
 // method overload
+func (p *ListPaginator) ItemActionExec(i int, actionKey string) bool {
+	item := p.Item(i).(ListItem)
+	switch actionKey {
+	case "delete":
+		if item.ID != nil {
+			transmission.Delete(*item.ID)
+		} else {
+			if item.IsDir {
+				os.RemoveAll(common.Settings.Download_dir + "/" + *item.Name)
+			} else {
+				os.Remove(common.Settings.Download_dir + "/" + *item.Name)
+			}
+		}
+		p.Delete(i)
+		p.Refresh()
+	}
+	return true
+}
+
+// method overload
 func (p *ListPaginator) Reload() {
 
 	torrents, err := transmission.List()
@@ -195,26 +215,6 @@ func (p *ListPaginator) Reload() {
 	for i := range listItems {
 		p.Append(listItems[i])
 	}
-}
-
-// method overload
-func (p *ListPaginator) ItemActionExec(i int, actionKey string) bool {
-	item := p.Item(i).(ListItem)
-	switch actionKey {
-	case "delete":
-		if item.ID != nil {
-			transmission.Delete(*item.ID)
-		} else {
-			if item.IsDir {
-				os.RemoveAll(common.Settings.Download_dir + "/" + *item.Name)
-			} else {
-				os.Remove(common.Settings.Download_dir + "/" + *item.Name)
-			}
-		}
-		p.Delete(i)
-		p.Refresh()
-	}
-	return true
 }
 
 //-------------------------------------------------------------------------
