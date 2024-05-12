@@ -28,22 +28,17 @@ var callbackHandler map[string]string = make(map[string]string)
 
 // ----------------------------------------
 func logError(err error) {
-	log.Printf("[UI-PAGINATOR] [ERROR] %s", err)
+	log.Printf("[PAGINATOR] [ERROR] %s", err)
 }
-
 // ----------------------------------------
-
 type VirtualMethods interface {
 	HeaderString() string
 	FooterString() string
-
 	ItemString(item any) string
 	KeepItem(item any, attributeKey string, attributeValue string) bool
-
 	LessItem(i int, j int, attributeKey string) bool
 	ItemActions(i int) []string
 	ItemActionExec(i int, actionKey string) bool
-
 	Reload()
 }
 
@@ -94,14 +89,14 @@ func (p *Paginator) Append(item any) {
 	p.index = append(p.index, len(p.list) -1)
 }
 
-func (p *Paginator) Item(i int) any {
-	return p.list[p.index[i]]
-}
-
 func (p *Paginator) Delete(i int) {
 	idx := p.index[i]
 	p.list = append(p.list[:idx], p.list[idx+1:]...)
 	p.index = append(p.index[:i], p.index[i+1:]...)
+}
+
+func (p *Paginator) Item(i int) any {
+	return p.list[p.index[i]]
 }
 
 func (p *Paginator) pageBounds() (int, int) {
@@ -129,7 +124,7 @@ func (p *Paginator) FooterString() string {
 	return ""
 }
 
-func (p *Paginator) KeepItem(item any, attributeKey string, attributeValue string, enabled bool) bool {
+func (p *Paginator) KeepItem(item any, attributeKey string, attributeValue string) bool {
 	return true
 }
 

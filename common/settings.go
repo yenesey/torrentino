@@ -29,6 +29,6 @@ func init() {
 	var data, _ = os.ReadFile("./settings.json")
 	err := json.Unmarshal(data, &Settings)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 }

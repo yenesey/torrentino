@@ -154,30 +154,6 @@ func Query(str string, indexers []string) (*QueryResults, error) {
 	return &r, nil
 }
 
-/*
-func (j *Jackett) CommonGet(url string) (*[]byte, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create http get request")
-	}
-	res, err := j.client.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to do http get")
-	}
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		return nil, errors.New("httpGet:" + res.Status)
-	}
-
-	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to read response http GET")
-	}
-
-	return &data, nil
-}
-*/
-
 func init() {
 	var jkt = &common.Settings.Jackett
 	apiKey = jkt.Api_key

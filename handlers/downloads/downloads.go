@@ -1,4 +1,4 @@
-package torrent_list
+package downloads
 
 import (
 	"fmt"

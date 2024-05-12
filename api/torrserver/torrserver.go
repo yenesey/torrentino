@@ -24,7 +24,7 @@ type TSListItem struct {
 
 type TSList []TSListItem
 
-func ListItems() *TSList {
+func ListItems() (*TSList, error) {
 	ts := &common.Settings.Torrserver
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", "http://"+ts.Host+":"+strconv.Itoa(ts.Port) + "/torrents", strings.NewReader("{\"action\" : \"list\"}"))
@@ -44,7 +44,7 @@ func ListItems() *TSList {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &List
+	return &List, nil
 }
 
 func init() {
