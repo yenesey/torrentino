@@ -50,7 +50,11 @@ type ListItem struct {
 type ListPaginator struct {
 	paginator.Paginator
 }
-
+// ----------------------------------------
+func logError(err error) {
+	log.Printf("[handlers/dowloads] %s", err)
+}
+// ----------------------------------------
 func NewPaginator() *ListPaginator {
 	var p ListPaginator
 	p = ListPaginator{
@@ -169,45 +173,55 @@ func (p *ListPaginator) Reload() {
 		torrentNames[*listItems[i].Name] = true
 	}
 
-	for dirEntry := range utils.ReadDir(common.Settings.Download_dir, false) {
+	dir, err := utils.ReadDir(common.Settings.Download_dir, false)
+	if err != nil {
+		logError(err)
+	} else {
 
-		if _, ok := torrentNames[dirEntry.Name]; !ok {
+		for dirEntry := range dir {
 
-			name := dirEntry.Name
-			size := int64(dirEntry.Size)
-			status := transmissionrpc.TorrentStatus(404)
-			modTime := dirEntry.ModTime
-			zero := float64(0.0)
-			ext := strings.ToLower(filepath.Ext(dirEntry.Name))
-			extCount := 0
+			if _, ok := torrentNames[dirEntry.Name]; !ok {
 
-			extCounter := collections.NewCounter()
-			if dirEntry.IsDir {
-				for subs := range utils.ReadDir(path.Join(common.Settings.Download_dir, name), true) {
-					extCounter.Add(filepath.Ext(subs.Name))
-					size += subs.Size
+				name := dirEntry.Name
+				size := int64(dirEntry.Size)
+				status := transmissionrpc.TorrentStatus(404)
+				modTime := dirEntry.ModTime
+				zero := float64(0.0)
+				ext := strings.ToLower(filepath.Ext(dirEntry.Name))
+				extCount := 0
+
+				extCounter := collections.NewCounter()
+				if dirEntry.IsDir {
+					if subDirsWalk, err := utils.ReadDir(path.Join(common.Settings.Download_dir, name), true); err == nil {
+						for subs := range subDirsWalk {
+							extCounter.Add(filepath.Ext(subs.Name))
+							size += subs.Size
+						}
+					} else {
+						logError(err)
+					}
 				}
-			}
-			if len(extCounter.MostCommon(1)) > 0 {
-				ext = strings.ToLower(extCounter.MostCommon(1)[0].Key.(string))
-				extCount = extCounter.MostCommon(1)[0].Value
-			}
+				if len(extCounter.MostCommon(1)) > 0 {
+					ext = strings.ToLower(extCounter.MostCommon(1)[0].Key.(string))
+					extCount = extCounter.MostCommon(1)[0].Value
+				}
 
-			listItems = append(listItems,
-				ListItem{
-					transmissionrpc.Torrent{
-						Name:           &name,
-						DownloadedEver: &size,
-						Status:         &status,
-						PercentDone:    &zero,
-						UploadRatio:    &zero,
-						AddedDate:      &modTime,
-					},
-					ext,
-					extCount,
-					dirEntry.IsDir,
-					"unknown",
-				})
+				listItems = append(listItems,
+					ListItem{
+						transmissionrpc.Torrent{
+							Name:           &name,
+							DownloadedEver: &size,
+							Status:         &status,
+							PercentDone:    &zero,
+							UploadRatio:    &zero,
+							AddedDate:      &modTime,
+						},
+						ext,
+						extCount,
+						dirEntry.IsDir,
+						"unknown",
+					})
+			}
 		}
 	}
 
@@ -217,7 +231,7 @@ func (p *ListPaginator) Reload() {
 	}
 }
 
-//-------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var pg = NewPaginator()
 	pg.Sorting.Setup([]paginator.SortHeader{

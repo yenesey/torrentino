@@ -17,7 +17,6 @@ const (
 	CB_ORDER_BY  = "#order_by#"
 	CB_FILTER_BY = "#filterby#"
 	CB_ACTION    = "#action__#"
-
 	CB_NEXT_PAGE      = "next_page"
 	CB_PREV_PAGE      = "prev_page"
 	CB_TOGGLE_FILTERS = "toggle_filters"
@@ -28,7 +27,7 @@ var callbackHandler map[string]string = make(map[string]string)
 
 // ----------------------------------------
 func logError(err error) {
-	log.Printf("[PAGINATOR] [ERROR] %s", err)
+	log.Printf("[common/paginator] %s", err)
 }
 // ----------------------------------------
 type VirtualMethods interface {
@@ -144,11 +143,10 @@ func (p *Paginator) Reload() {
 }
 // ----------------------------------------
 func (p *Paginator) buildText() {
-	var fromIndex, toIndex = p.pageBounds()
-	var text string
-	var hr = "\n<b>⸻⸻⸻</b>\n"
-	var br = "\n\n"
 
+	var text string
+	hr := "\n<b>⸻⸻⸻</b>\n"
+	br := "\n\n"
 	hSel := func(i int) string {
 		if p.selectedItem == i {
 			return "<u>" + p.virtual.ItemString(p.Item(i)) + "</u>"
@@ -158,6 +156,7 @@ func (p *Paginator) buildText() {
 	}
 
 	text = text + p.virtual.HeaderString() + hr
+	fromIndex, toIndex := p.pageBounds()
 	for i := fromIndex; i < toIndex; i++ {
 		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " + hSel(i) + br
 	}

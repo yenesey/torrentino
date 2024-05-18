@@ -6,6 +6,8 @@ import (
 	"torrentino/common/utils"
 	"torrentino/api/torrserver"
 	"log"
+	"fmt"
+	"github.com/pkg/errors"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 )
@@ -13,7 +15,11 @@ import (
 type TorrserverList struct {
 	paginator.Paginator
 }
-
+// ----------------------------------------
+func logError(err error) {
+	log.Printf("[handlers/torrserver] %s", err)
+}
+// ----------------------------------------
 func NewPaginator() *TorrserverList {
 	var p TorrserverList
 	p = TorrserverList{
@@ -32,7 +38,7 @@ func (p *TorrserverList) ItemString(item_ any) string {
 		
 
 	} else {
-		log.Fatalf("ItemString")
+		logError(fmt.Errorf("ItemString %s", "error"))
 	}
 	return ""
 }
@@ -50,6 +56,8 @@ func (p *TorrserverList) ItemActionExec(i int, actionKey string) bool {
 		if err := torrserver.Delete(item.Hash); err == nil {
 			p.Delete(i)
 			p.Refresh()
+		} else {
+			logError(errors.Wrap(err, "ItemActionExec"))
 		}
 	}
 
@@ -73,7 +81,7 @@ func (p *TorrserverList) Reload() {
 
 	var result, err = torrserver.List()
 	if err != nil {
-		log.Fatal(err)
+		logError(errors.Wrap(err, "Reload"))
 	}
 	
 	p.Alloc(len(*result))

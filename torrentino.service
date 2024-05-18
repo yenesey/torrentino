@@ -1,0 +1,20 @@
+[Unit]
+Description=Torrent Manager Bot Daemon
+After=network.target
+
+[Service]
+SyslogIdentifier=torrentino
+StandardOutput=file:/var/log/torrentino.log
+StandardError=file:/var/log/torrentino.log
+Restart=always
+RestartSec=5
+Type=simple
+WorkingDirectory=/opt/torrentino
+
+ExecStart=/opt/torrentino/torrentino
+
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+

@@ -2,6 +2,7 @@ package torrent_find
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 )
 
@@ -28,6 +30,11 @@ type FindPaginator struct {
 	query string
 }
 
+// ----------------------------------------
+func logError(err error) {
+	log.Printf("[handlers/torrent_find] %s", err)
+}
+// ----------------------------------------
 func NewPaginator(query string) *FindPaginator {
 	var fp FindPaginator
 	fp = FindPaginator{
@@ -58,7 +65,7 @@ func (p *FindPaginator) ItemString(item any) string {
 			})()
 
 	} else {
-		log.Fatalf("ItemString")
+		logError(fmt.Errorf("ItemString %s", "error"))
 	}
 	return ""
 }
@@ -132,14 +139,14 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) bool {
 	case "download":
 		_, err := transmission.Add(urlOrMagnet)
 		if err != nil {
-			log.Fatal(err)
+			logError(errors.Wrap(err, "ItemActionExec"))
 		}
 		item.InTorrents = true
 	
 	case "torrsrv":
 		err := torrserver.Add(item.MagnetUri, item.Title, getPosterLinkFromPage(item.Details))
 		if err != nil {
-			log.Fatal(err)
+			logError(errors.Wrap(err, "ItemActionExec"))
 		}
 		item.InTorrserver = true
 
@@ -154,7 +161,7 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) bool {
 	case ".torrent":
 		res, err := http.Get(item.Link)
 		if err != nil {
-			log.Fatal(err)
+			logError(errors.Wrap(err, "ItemActionExec"))
 		}
 		p.Bot.SendDocument(p.Ctx, &bot.SendDocumentParams{
 			ChatID:      p.ChatID,
@@ -172,7 +179,7 @@ func (p *FindPaginator) Reload() {
 
 	var result, err = jackett.Query(p.query, nil)
 	if err != nil {
-		log.Fatal(err)
+		logError(errors.Wrap(err, "Reload"))
 	}
 	
 	p.Alloc(len(result.Results))
@@ -196,7 +203,7 @@ func getPosterLinkFromPage(url string) string {
 
 	doc, err := htmlquery.LoadURL(url)
 	if err != nil {
-		log.Fatal(err)
+		logError(errors.Wrap(err, "getPosterLinkFromPage"))
 	}
 
 	poster := htmlquery.Find(doc, "//var[@class=\"postImg postImgAligned img-right\"]") // rutracker

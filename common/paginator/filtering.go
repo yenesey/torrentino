@@ -2,7 +2,6 @@ package paginator
 
 import (
 	"reflect"
-	"torrentino/common/utils"
 )
 
 type FilteringHeader struct {
@@ -55,7 +54,6 @@ func (f *FilteringState) ClassifyItems(list []any) {
 // -------------------------------------------------------------
 
 func (p *Paginator) Filter() {
-	defer utils.TimeTrack(utils.Now(), "Filtering")
 	p.index = p.index[:0] //p.index = make([]int, 0, len(p.list))
 	for li := range p.list {
 		anyFilter := false
@@ -75,5 +73,4 @@ func (p *Paginator) Filter() {
 			p.index = append(p.index, li)
 		}
 	}
-
 }

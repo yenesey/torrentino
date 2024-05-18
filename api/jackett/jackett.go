@@ -97,44 +97,46 @@ var baseUrl string
 var client *http.Client
 
 func httpGet(addUrl string) (*[]byte, error) {
-	req, err := http.NewRequest("GET", baseUrl + addUrl, nil)
+	req, err := http.NewRequest("GET", baseUrl+addUrl, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create http get request")
+		return nil, err
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to do http get")
+		return nil, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return nil, errors.New("httpGet:" + res.Status)
+		return nil, err
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read response http GET")
+		return nil, err
 	}
 
 	return &data, nil
 }
 
 func GetValidIndexers() (*[]Indexer, error) {
+	const ERR_CTX = "GetValidIndexers"
 	var r []Indexer
 
 	data, err := httpGet("indexers?Configured=true")
 	if err != nil {
-		return nil, errors.Wrap(err, "GetValidIndexers failed")
+		return nil, errors.Wrap(err, ERR_CTX)
 	}
 
 	err = json.Unmarshal(*data, &r)
 	if err != nil {
-		return nil, errors.Wrap(err, "GetValidIndexers failed")
+		return nil, errors.Wrap(err, ERR_CTX)
 	}
 
 	return &r, nil
 }
 
 func Query(str string, indexers []string) (*QueryResults, error) {
+	const ERR_CTX = "failed query Jackett service"
 	//var url = j.url + "indexers/all/results?apikey=" + j.apiKey + "&Query=" + str
 	var u = "indexers/status:healthy,test:passed/results?apikey=" + apiKey
 	for _, indexer := range indexers {
@@ -143,13 +145,13 @@ func Query(str string, indexers []string) (*QueryResults, error) {
 	u = u + "&Query=" + url.QueryEscape(str)
 	data, err := httpGet(u)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed query Jackett")
+		return nil, errors.Wrap(err, ERR_CTX)
 	}
 
 	var r QueryResults
 	err = json.Unmarshal(*data, &r)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed query Jackett")
+		return nil, errors.Wrap(err, ERR_CTX)
 	}
 	return &r, nil
 }
@@ -160,7 +162,7 @@ func init() {
 	baseUrl = "http://" + jkt.Host + ":" + strconv.Itoa(jkt.Port) + "/api/v2.0/"
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		log.Fatalf("Got error while creating cookie jar %s", err.Error())
+		log.Fatalf("error creating cookie jar %s", err.Error())
 	}
 	client = &http.Client{
 		Jar: jar,

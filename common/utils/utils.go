@@ -2,11 +2,10 @@ package utils
 
 import (
 	"fmt"
-	"strconv"
-	"time"
 	"os"
 	"path"
-	"log"
+	"strconv"
+	"time"
 )
 
 var sizes = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB"}
@@ -38,39 +37,42 @@ func Now() time.Time {
 }
 
 func TimeTrack(start time.Time, name string) {
-	// usage: defer utils.TimeTrack(utils.Now(), "tag")
-    elapsed := time.Since(start)
-    fmt.Printf("%s took %s\n", name, elapsed)
+	// usage: defer utils.TimeTrack(utils.Now(), "tag")   -- on the begin of any func
+	elapsed := time.Since(start)
+	fmt.Printf("%s took %s\n", name, elapsed)
 }
-
 
 type FileInfo struct {
-	Name  string
-	IsDir bool
-	Size  int64
-	ModTime time.Time 
+	Name    string
+	IsDir   bool
+	Size    int64
+	ModTime time.Time
 }
 
-func ReadDir(rootPath string, recursive bool) <-chan FileInfo {
-
+func ReadDir(rootPath string, recursive bool) (<-chan FileInfo, error) {
+	var err error
 	channel := make(chan FileInfo)
 
-	var readDirRec func (dirPath string) 
-	readDirRec = func (dirPath string) {
-		entries, err := os.ReadDir(dirPath)
-		if err != nil {
-			log.Fatal(err)
+	var readDirRec func(dirPath string)
+	readDirRec = func(dirPath string) {
+		entries, _err := os.ReadDir(dirPath)
+		if _err != nil {
+			err = _err
+			return
 		}
 		for i := range entries {
 			var fi FileInfo
-			info, err_ :=  entries[i].Info()
-			if err_ == nil {
+			info, _err := entries[i].Info()
+			if err == nil {
 				fi.Name = info.Name()
 				fi.Size = info.Size()
 				fi.IsDir = info.IsDir()
 				fi.ModTime = info.ModTime()
+			} else {
+				err = _err
+				return
 			}
-			if (recursive && fi.IsDir) {
+			if recursive && fi.IsDir {
 				readDirRec(path.Join(dirPath, fi.Name))
 			} else {
 				channel <- fi
@@ -82,5 +84,5 @@ func ReadDir(rootPath string, recursive bool) <-chan FileInfo {
 		readDirRec(rootPath)
 		close(channel)
 	}()
-	return channel
+	return channel, err
 }

@@ -26,8 +26,11 @@ type SettingsStruct struct {
 var Settings SettingsStruct
 
 func init() {
-	var data, _ = os.ReadFile("./settings.json")
-	err := json.Unmarshal(data, &Settings)
+	data, err := os.ReadFile("./settings.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = json.Unmarshal(data, &Settings)
 	if err != nil {
 		log.Fatal(err)
 	}

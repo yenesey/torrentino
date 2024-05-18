@@ -94,12 +94,15 @@ func Add(link string, title string, poster string) error {
 }
 
 func Delete(hash string) error {
-	_, err := http.Post(
+	res, err := http.Post(
 		url,
 		"application/json",
 		strings.NewReader(
 			"{\"action\" : \"rem\","+
 				"\"hash\" : \""+hash+"\"}"),
 	)
+	if res.StatusCode != 200 {
+		return fmt.Errorf("request error: %s", res.Status)
+	}
 	return err
 }
