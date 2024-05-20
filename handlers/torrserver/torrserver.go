@@ -25,7 +25,6 @@ func NewPaginator() *TorrserverList {
 	p = TorrserverList{
 		*paginator.New(&p, "torrerver", 4),
 	}
-	p.Reload()
 	return &p
 }
 
@@ -88,15 +87,16 @@ func (p *TorrserverList) Reload() {
 	for i := range *result {
 		p.Append((*result)[i])
 	}
-
+	p.Paginator.Reload()
 }
 
 
 //-------------------------------------------------------------------------
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	var pg = NewPaginator()
-	pg.Sorting.Setup([]paginator.SortHeader{
+	var p = NewPaginator()
+	p.Sorting.Setup([]paginator.SortHeader{
 		{Name: "Size", ShortName: "size", Order: 1},
 	})
-	pg.Show(ctx, b, update.Message.Chat.ID)
+	p.Reload()
+	p.Show(ctx, b, update.Message.Chat.ID)
 }

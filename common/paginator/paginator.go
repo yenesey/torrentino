@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	CB_ORDER_BY  = "#order_by#"
-	CB_FILTER_BY = "#filterby#"
-	CB_ACTION    = "#action__#"
+	CB_ORDER_BY       = "#order_by#"
+	CB_FILTER_BY      = "#filterby#"
+	CB_ACTION         = "#action__#"
 	CB_NEXT_PAGE      = "next_page"
 	CB_PREV_PAGE      = "prev_page"
 	CB_TOGGLE_FILTERS = "toggle_filters"
@@ -29,6 +29,7 @@ var callbackHandler map[string]string = make(map[string]string)
 func logError(err error) {
 	log.Printf("[common/paginator] %s", err)
 }
+
 // ----------------------------------------
 type VirtualMethods interface {
 	HeaderString() string
@@ -42,12 +43,12 @@ type VirtualMethods interface {
 }
 
 type Paginator struct {
-	virtual     VirtualMethods
-	list        []any
-	index       []int
+	virtual VirtualMethods
+	list    []any
+	index   []int
 
-	Sorting     SortingState
-	Filtering   FilteringState
+	Sorting   SortingState
+	Filtering FilteringState
 
 	actions            []string
 	extControlsVisible bool
@@ -55,9 +56,9 @@ type Paginator struct {
 	itemsPerPage       int
 	selectedItem       int
 
-	Bot         *bot.Bot
-	ChatID		any
-	Ctx         context.Context
+	Bot    *bot.Bot
+	ChatID any
+	Ctx    context.Context
 
 	prefix      string
 	message     *models.Message
@@ -65,12 +66,11 @@ type Paginator struct {
 	kbd         models.InlineKeyboardMarkup
 	textChanged bool
 	kbdChanged  bool
-
 }
 
 func New(virtualMethods VirtualMethods, prefix string, itemsPerPage int) *Paginator {
 	var pg = &Paginator{
-		virtual:  virtualMethods,
+		virtual:      virtualMethods,
 		itemsPerPage: itemsPerPage,
 		prefix:       prefix,
 	}
@@ -85,7 +85,7 @@ func (p *Paginator) Alloc(l int) {
 
 func (p *Paginator) Append(item any) {
 	p.list = append(p.list, item)
-	p.index = append(p.index, len(p.list) -1)
+	p.index = append(p.index, len(p.list)-1)
 }
 
 func (p *Paginator) Delete(i int) {
@@ -140,7 +140,11 @@ func (p *Paginator) ItemActionExec(i int, actionKey string) bool {
 }
 
 func (p *Paginator) Reload() {
+	p.Filtering.ClassifyItems(p.list)
+	p.Filter()
+	p.Sort()
 }
+
 // ----------------------------------------
 func (p *Paginator) buildText() {
 
@@ -270,10 +274,6 @@ func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) *models.Me
 	p.Ctx = ctx
 	p.Bot = b
 	p.ChatID = chatID
-
-	p.Filtering.ClassifyItems(p.list)
-	p.Filter()
-	p.Sort()
 
 	p.buildText()
 	p.buildKeyboard()

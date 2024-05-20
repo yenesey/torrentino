@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 	"torrentino/api/transmission"
 	"torrentino/common"
 	"torrentino/common/paginator"
@@ -60,7 +61,6 @@ func NewPaginator() *ListPaginator {
 	p = ListPaginator{
 		*paginator.New(&p, "list", 4),
 	}
-	p.Reload()
 	return &p
 }
 
@@ -80,7 +80,7 @@ func (p *ListPaginator) ItemString(item any) string {
 			" [" + fmt.Sprintf("%.2f", *data.UploadRatio) + "x]" +
 			" [" + data.Status + "]"
 	} else {
-		log.Fatalf("(p *ListPaginator) ItemString(item any)")
+		logError(fmt.Errorf("ItemString - error get item data"))
 	}
 	return result
 }
@@ -122,7 +122,9 @@ func (p *ListPaginator) ItemActions(i int) (result []string) {
 	case "downloading", "seeding":
 		result = append(result, "pause")
 	default:
-		result = append(result, "start")
+		if item.Status != "unknown" {
+			result = append(result, "start")
+		}
 	}
 	result = append(result, "delete")
 	return result
@@ -144,6 +146,21 @@ func (p *ListPaginator) ItemActionExec(i int, actionKey string) bool {
 		}
 		p.Delete(i)
 		p.Refresh()
+
+	case "start":
+		if transmission.Start(*item.ID) == nil {
+			p.Reload()
+			p.Refresh()
+		} else {
+			logError(fmt.Errorf("transmission.Start"))
+		}
+	case "pause":
+		if transmission.Pause(*item.ID) == nil {
+			p.Reload()
+			p.Refresh()
+		} else {
+			logError(fmt.Errorf("transmission.Pause"))
+		}
 	}
 	return true
 }
@@ -181,7 +198,6 @@ func (p *ListPaginator) Reload() {
 		for dirEntry := range dir {
 
 			if _, ok := torrentNames[dirEntry.Name]; !ok {
-
 				name := dirEntry.Name
 				size := int64(dirEntry.Size)
 				status := transmissionrpc.TorrentStatus(404)
@@ -229,17 +245,28 @@ func (p *ListPaginator) Reload() {
 	for i := range listItems {
 		p.Append(listItems[i])
 	}
+	p.Paginator.Reload()
 }
 
 // -------------------------------------------------------------------------
+
+
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	var pg = NewPaginator()
-	pg.Sorting.Setup([]paginator.SortHeader{
+	
+	var p = NewPaginator()
+	p.Sorting.Setup([]paginator.SortHeader{
 		{Name: "AddedDate", ShortName: "date", Order: 1},
 		{Name: "Name", ShortName: "name", Order: 1},
 		{Name: "TotalSize", ShortName: "size", Order: 0},
 		{Name: "IsDir", ShortName: "dir", Order: 0},
 	})
-	pg.Filtering.Setup([]string{"Status"})
-	pg.Show(ctx, b, update.Message.Chat.ID)
+	p.Filtering.Setup([]string{"Status"})
+	go func() {
+		for range time.Tick(time.Second*5) {
+			p.Reload()
+			p.Refresh()
+		}
+	}()
+	p.Reload()
+	p.Show(ctx, b, update.Message.Chat.ID)
 }

@@ -18,11 +18,18 @@ func Add(torrentUrlOrMagnet string) (torrent transmissionrpc.Torrent, err error)
 }
 
 func Delete(torrentId int64) (err error) {
-	err = Transmission.TorrentRemove(context.TODO(), transmissionrpc.TorrentRemovePayload{
+	return Transmission.TorrentRemove(context.TODO(), transmissionrpc.TorrentRemovePayload{
 		IDs:             []int64{torrentId},
 		DeleteLocalData: true,
 	})
-	return
+}
+
+func Start(torrentId int64) (err error) {
+	return Transmission.TorrentStartIDs(context.TODO(), []int64{torrentId})
+}
+
+func Pause(torrentId int64) (err error) {
+	return Transmission.TorrentStopIDs(context.TODO(), []int64{torrentId})
 }
 
 func List() (torrents []transmissionrpc.Torrent, err error) {

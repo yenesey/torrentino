@@ -43,7 +43,6 @@ func NewPaginator(query string) *FindPaginator {
 	}
 	//todo: 1 get torrent_list
 	//todo: 2 check each list[i] item is already downloading...
-	fp.Reload()
 	return &fp
 }
 
@@ -186,7 +185,7 @@ func (p *FindPaginator) Reload() {
 	for i := range result.Results {
 		p.Append(&ListItem{result.Results[i], false, false})
 	}
-
+	p.Paginator.Reload()
 }
 
 //-------------------------------------------------------------------------
@@ -229,13 +228,14 @@ func getPosterLinkFromPage(url string) string {
 
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	var pg = NewPaginator(update.Message.Text)
-	pg.Sorting.Setup([]paginator.SortHeader{
+	var p = NewPaginator(update.Message.Text)
+	p.Sorting.Setup([]paginator.SortHeader{
 		{Name: "Size", ShortName: "size", Order: 1},
 		{Name: "Seeders", ShortName: "seeds", Order: 1},
 		{Name: "Peers", ShortName: "peers", Order: 0},
 		{Name: "Link", ShortName: "link", Order: 0},
 	})
-	pg.Filtering.Setup([]string{"TrackerId"})
-	pg.Show(ctx, b, update.Message.Chat.ID)
+	p.Filtering.Setup([]string{"TrackerId"})
+	p.Reload()
+	p.Show(ctx, b, update.Message.Chat.ID)
 }
