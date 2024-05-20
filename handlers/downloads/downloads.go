@@ -51,10 +51,12 @@ type ListItem struct {
 type ListPaginator struct {
 	paginator.Paginator
 }
+
 // ----------------------------------------
 func logError(err error) {
 	log.Printf("[handlers/dowloads] %s", err)
 }
+
 // ----------------------------------------
 func NewPaginator() *ListPaginator {
 	var p ListPaginator
@@ -249,10 +251,11 @@ func (p *ListPaginator) Reload() {
 }
 
 // -------------------------------------------------------------------------
-
+var gDone chan bool = make(chan bool, 1)
+var gFirstFun bool = true
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	
+
 	var p = NewPaginator()
 	p.Sorting.Setup([]paginator.SortHeader{
 		{Name: "AddedDate", ShortName: "date", Order: 1},
@@ -261,12 +264,25 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		{Name: "IsDir", ShortName: "dir", Order: 0},
 	})
 	p.Filtering.Setup([]string{"Status"})
+
+	if !gFirstFun {
+		gDone <- true
+	}
+	gFirstFun = false
+	ticker := time.NewTicker(time.Second * 2)
 	go func() {
-		for range time.Tick(time.Second*5) {
-			p.Reload()
-			p.Refresh()
+		for {
+			select {
+			case <- ticker.C:
+				p.Reload()
+				p.Refresh()
+			case <-gDone:
+				ticker.Stop()
+				return
+			}
 		}
 	}()
+
 	p.Reload()
 	p.Show(ctx, b, update.Message.Chat.ID)
 }
