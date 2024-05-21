@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"syscall"
 	"strconv"
 	"strings"
 	"time"
@@ -73,11 +74,10 @@ func (p *ListPaginator) ItemString(item any) string {
 		if data.IsDir {
 			result = "📁[" + strconv.Itoa(data.ExtCount) + "x | " + data.Ext + "]"
 		}
-
 		result = result +
 			ExtIcons[data.Ext] +
 			"" + *data.Name +
-			" [" + utils.FormatFileSize(*data.DownloadedEver, 1024) + "]" +
+			" [" + utils.FormatFileSize(uint64(*data.DownloadedEver)) + "]" +
 			" [" + fmt.Sprintf("%.2f", *data.PercentDone*100) + "%]" +
 			" [" + fmt.Sprintf("%.2f", *data.UploadRatio) + "x]" +
 			" [" + data.Status + "]"
@@ -86,6 +86,34 @@ func (p *ListPaginator) ItemString(item any) string {
 	}
 	return result
 }
+
+// method overload
+func (p *ListPaginator) FooterString() string {
+
+	fs := syscall.Statfs_t{}
+	err := syscall.Statfs(common.Settings.Download_dir, &fs)
+	if err != nil {
+		return ""
+	}
+	diskAll := fs.Blocks * uint64(fs.Bsize)
+	diskFree := fs.Bfree * uint64(fs.Bsize)
+	diskUsed := diskAll - diskFree
+
+	var total uint64 
+	var uploaded uint64
+	for i := 0; i < p.Len(); i ++ {
+		item := p.Item(i).(ListItem)
+		total += uint64(*item.DownloadedEver)
+		uploaded += uint64(*item.UploadRatio * float64(*item.DownloadedEver))
+	}
+
+	return utils.FormatFileSize(total) + " dwn / " + 
+		utils.FormatFileSize(uploaded) + " upl\n" + 
+		utils.FormatFileSize(diskUsed) + " used / " +
+		utils.FormatFileSize(diskFree) + " free / " +
+		utils.FormatFileSize(diskAll) + " total " 
+}
+
 
 // method overload
 func (p *ListPaginator) KeepItem(item any, attributeKey string, attributeValue string) bool {
@@ -269,7 +297,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		gDone <- true
 	}
 	gFirstFun = false
-	ticker := time.NewTicker(time.Second * 2)
+	ticker := time.NewTicker(time.Second * 5)
 	go func() {
 		for {
 			select {

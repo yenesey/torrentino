@@ -10,13 +10,12 @@ import (
 
 var sizes = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB"}
 
-func FormatFileSize(size int64, base int) string {
+func FormatFileSize(size uint64) string {
 	unitsLimit := len(sizes)
 	i := 0
 	fs := float64(size)
-	fbase := float64(base)
-	for fs >= fbase && i < unitsLimit {
-		fs = fs / fbase
+	for fs >= 1024.00 && i < unitsLimit {
+		fs = fs / 1024.00
 		i++
 	}
 

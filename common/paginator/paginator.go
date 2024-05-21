@@ -2,6 +2,7 @@ package paginator
 
 import (
 	"context"
+	"slices"
 	// "fmt"
 	"log"
 	"reflect"
@@ -90,7 +91,7 @@ func (p *Paginator) Append(item any) {
 
 func (p *Paginator) Delete(i int) {
 	idx := p.index[i]
-	p.list = append(p.list[:idx], p.list[idx+1:]...)
+	p.list = slices.Delete(p.list, idx, idx+1)  // p.list = append(p.list[:idx], p.list[idx+1:]...)
 	p.Filter() // <-- just for rebuild the indexes
 }
 
@@ -149,22 +150,28 @@ func (p *Paginator) Reload() {
 func (p *Paginator) buildText() {
 
 	var text string
-	hr := "\n<b>⸻⸻⸻</b>\n"
+	hr := "\n<b>⸻⸻⸻⸻⸻</b>\n"
 	br := "\n\n"
-	hSel := func(i int) string {
-		if p.selectedItem == i {
-			return "<u>" + p.virtual.ItemString(p.Item(i)) + "</u>"
-		} else {
-			return p.virtual.ItemString(p.Item(i))
-		}
-	}
 
 	text = text + p.virtual.HeaderString() + hr
 	fromIndex, toIndex := p.pageBounds()
 	for i := fromIndex; i < toIndex; i++ {
-		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " + hSel(i) + br
+		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " + 
+		(func() string {
+			if p.selectedItem == i {
+				return "<u>" + p.virtual.ItemString(p.Item(i)) + "</u>"
+			} else {
+				return p.virtual.ItemString(p.Item(i))
+			}
+		})()	
+		if (i < toIndex-1) {
+			text = text + br
+		}
 	}
-	text = text + p.virtual.FooterString()
+	footer := p.virtual.FooterString()
+	if len(footer) > 0 {
+		text = text + hr + "<b>" + footer + "</b>"
+	}
 
 	p.textChanged = (text != p.text)
 	if p.textChanged {

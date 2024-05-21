@@ -50,7 +50,7 @@ func (s *SortingState) ToggleKey(attributeKey string) {
 		h.Order = 2
 	case 2:
 		h.Order = 0
-		idx := slices.Index(s.multyOrder, i) // idx := slices.IndexFunc(s.multyOrder, func(el int) bool { return el == i })
+		idx := slices.Index(s.multyOrder, i)
 		s.multyOrder = slices.Delete(s.multyOrder, idx, idx+1)
 	}
 	//s.SortingState()

@@ -51,7 +51,7 @@ func (p *FindPaginator) ItemString(item any) string {
 
 	if data, ok := item.(*ListItem); ok {
 		return data.Title +
-			" [" + utils.FormatFileSize(int64(data.Size), 1024.0) + "] [" + data.TrackerId + "]" +
+			" [" + utils.FormatFileSize(uint64(data.Size)) + "] [" + data.TrackerId + "]" +
 			" [" + strconv.Itoa(int(data.Seeders)) + "s/" + strconv.Itoa(int(data.Peers)) + "p]" +
 			(func() (result string) {	
 				if data.InTorrents {

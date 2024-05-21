@@ -2,6 +2,7 @@ package paginator
 
 import (
 	"reflect"
+	"slices"
 )
 
 type FilteringHeader struct {
@@ -12,7 +13,7 @@ type FilteringHeader struct {
 type FilteringAttribute struct {
 	Name   string
 	Values []FilteringHeader
-	mmap   map[string]int
+	mmap   map[string]bool
 }
 
 type FilteringState struct {
@@ -24,7 +25,7 @@ func (f *FilteringState) Setup(keys []string) {
 	for i, k := range keys {
 		f.attributes[i].Name = k
 		f.attributes[i].Values = make([]FilteringHeader, 0, 8)
-		f.attributes[i].mmap = make(map[string]int)
+		f.attributes[i].mmap = make(map[string]bool)
 	}
 }
 
@@ -47,16 +48,16 @@ func (f *FilteringState) ClassifyItems(list []any) {
 			fieldValue := reflect.Indirect(reflect.ValueOf(list[j])).FieldByName(f.attributes[i].Name).String()
 			if _, ok := f.attributes[i].mmap[fieldValue]; !ok {
 				f.attributes[i].Values = append(f.attributes[i].Values, FilteringHeader{Name: fieldValue, Enabled: false})
-				f.attributes[i].mmap[fieldValue] = len(f.attributes[i].Values) - 1
+				f.attributes[i].mmap[fieldValue] = true
 			}
 			countMap[fieldValue] = true
 		}
-		for key := range f.attributes[i].mmap {
-			if _, ok := countMap[key]; !ok {
+		for fieldValue := range f.attributes[i].mmap {
+			if _, ok := countMap[fieldValue]; !ok {
 				// remove filtering attributes that no more exists
-				idx := f.attributes[i].mmap[key]
-				f.attributes[i].Values = append(f.attributes[i].Values[:idx],f.attributes[i].Values[idx+1:]...)
-				delete(f.attributes[i].mmap, key)
+				idx := slices.IndexFunc(f.attributes[i].Values, func(el FilteringHeader) bool { return el.Name == fieldValue })
+				f.attributes[i].Values = slices.Delete(f.attributes[i].Values, idx, idx + 1)
+				delete(f.attributes[i].mmap, fieldValue)
 			}
 		}
 	}

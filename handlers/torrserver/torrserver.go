@@ -33,9 +33,7 @@ func (p *TorrserverList) ItemString(item_ any) string {
 
 	if item, ok := item_.(torrserver.TSListItem); ok {
 		return item.Title +
-		" [" + utils.FormatFileSize(int64(item.Torrent_Size), 1024.0) + "]"
-		
-
+		" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
 	} else {
 		logError(fmt.Errorf("ItemString %s", "error"))
 	}
