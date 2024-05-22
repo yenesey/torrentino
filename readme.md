@@ -6,6 +6,13 @@ Integrates with:
 - [Torrserver](https://github.com/YouROK/TorrServer) - instant watch videos
 
 ### Installation
+ - install [golang](https://go.dev/doc/install)
+ - clone this repo and build binary:
+\> git clone https://github.com/yenesey/torrentino.git
+\> torrentino
+\> go build
+
+
 - create and fullfill settings.json by example:
 ```json
 {
@@ -33,3 +40,4 @@ Integrates with:
  - append your telegram user id to "users_list" and start bot
     - first run with empty "users_list" in config, you'll see ID on any interaction with bot
 
+\> torrentino
