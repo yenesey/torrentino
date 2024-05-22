@@ -1,7 +1,6 @@
 package paginator
 
 import (
-	"fmt"
 	"slices"
 	"sort"
 )
@@ -41,7 +40,6 @@ func (s *SortingState) GetHeader(attributeKey string) (h *SortHeader, i int) {
 func (s *SortingState) ToggleKey(attributeKey string) {
 
 	var h, i = s.GetHeader(attributeKey)
-
 	switch h.Order {
 	case 0:
 		h.Order = 1
@@ -53,8 +51,6 @@ func (s *SortingState) ToggleKey(attributeKey string) {
 		idx := slices.Index(s.multyOrder, i)
 		s.multyOrder = slices.Delete(s.multyOrder, idx, idx+1)
 	}
-	//s.SortingState()
-	fmt.Println(s.multyOrder, s.headers)
 }
 
 // -------------------------------------------------------------

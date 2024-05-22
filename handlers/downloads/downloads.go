@@ -6,9 +6,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"syscall"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 	"torrentino/api/transmission"
 	"torrentino/common"
@@ -99,21 +99,20 @@ func (p *ListPaginator) FooterString() string {
 	diskFree := fs.Bfree * uint64(fs.Bsize)
 	diskUsed := diskAll - diskFree
 
-	var total uint64 
+	var downloaded uint64
 	var uploaded uint64
-	for i := 0; i < p.Len(); i ++ {
+	for i := 0; i < p.Len(); i++ {
 		item := p.Item(i).(ListItem)
-		total += uint64(*item.DownloadedEver)
+		downloaded += uint64(*item.DownloadedEver)
 		uploaded += uint64(*item.UploadRatio * float64(*item.DownloadedEver))
 	}
 
-	return utils.FormatFileSize(total) + " dwn / " + 
-		utils.FormatFileSize(uploaded) + " upl\n" + 
+	return utils.FormatFileSize(downloaded) + " dwn / " +
+		utils.FormatFileSize(uploaded) + " upl " + "\n" +
 		utils.FormatFileSize(diskUsed) + " used / " +
-		utils.FormatFileSize(diskFree) + " free / " +
-		utils.FormatFileSize(diskAll) + " total " 
+		utils.FormatFileSize(diskFree) + " free"
+	// + utils.FormatFileSize(diskAll) + " total "
 }
-
 
 // method overload
 func (p *ListPaginator) KeepItem(item any, attributeKey string, attributeValue string) bool {
@@ -139,7 +138,6 @@ func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
 		return *a.DownloadedEver < *b.DownloadedEver
 	case "IsDir":
 		return b.IsDir && !a.IsDir
-
 	}
 	return false
 }
@@ -288,7 +286,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	p.Sorting.Setup([]paginator.SortHeader{
 		{Name: "AddedDate", ShortName: "date", Order: 1},
 		{Name: "Name", ShortName: "name", Order: 1},
-		{Name: "TotalSize", ShortName: "size", Order: 0},
+		{Name: "DownloadedEver", ShortName: "size", Order: 0},
 		{Name: "IsDir", ShortName: "dir", Order: 0},
 	})
 	p.Filtering.Setup([]string{"Status"})
@@ -301,7 +299,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	go func() {
 		for {
 			select {
-			case <- ticker.C:
+			case <-ticker.C:
 				p.Reload()
 				p.Refresh()
 			case <-gDone:
