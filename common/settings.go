@@ -19,7 +19,7 @@ type SettingsStruct struct {
 	Transmission       hostPort
 	Torrserver         hostPort
 	Telegram_api_token string
-	Users_list         []int
+	Users_list         []int64
 	Download_dir       string
 }
 

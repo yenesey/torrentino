@@ -30,5 +30,6 @@ Integrates with:
 - don't forget to obtain and setup your own telegram_api_token (via @BotFather)
 
 ### Run
-- first run with empty "users_list" in config, you'll see ID in output on any interaction with bot, fill "users_list" and restart bot.
+ - append your telegram user id to "users_list" and start bot
+    - first run with empty "users_list" in config, you'll see ID on any interaction with bot
 

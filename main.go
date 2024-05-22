@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
-	"log"
 
 	"torrentino/common"
 
-	"torrentino/handlers/torrent_find"
 	"torrentino/handlers/downloads"
+	"torrentino/handlers/torrent_find"
 	"torrentino/handlers/torrserver"
+
+	"slices"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -24,6 +26,7 @@ func main() {
 	// https://github.com/go-telegram/bot/blob/main/examples/handler_match_func/main.go
 	opts := []bot.Option{
 		bot.WithSkipGetMe(),
+		bot.WithMiddlewares(securityMiddleware),
 		bot.WithDefaultHandler(torrent_find.Handler),
 		bot.WithMessageTextHandler("/downloads", bot.MatchTypeExact, downloads.Handler),
 		bot.WithMessageTextHandler("/torrserver", bot.MatchTypeExact, torrserver.Handler),
@@ -36,7 +39,6 @@ func main() {
 
 	b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
 		Commands: []models.BotCommand{
-			// {Command: "/find", Description: "find torrent"},
 			{Command: "/downloads", Description: "list downloads"},
 			{Command: "/torrserver", Description: "list torrserver"},
 		},
@@ -44,4 +46,16 @@ func main() {
 
 	b.Start(ctx)
 
+}
+
+func securityMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
+	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+		if update.Message != nil {
+			if slices.Index(common.Settings.Users_list, update.Message.From.ID) == -1 {
+				log.Printf("%d (%s) say: %s", update.Message.From.ID, update.Message.From.Username, update.Message.Text)
+				return
+			}
+		}
+		next(ctx, b, update)
+	}
 }
