@@ -2,23 +2,25 @@ package torrserver
 
 import (
 	"context"
-	"torrentino/common/paginator"
-	"torrentino/common/utils"
-	"torrentino/api/torrserver"
-	"log"
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/pkg/errors"
+	"log"
+	"torrentino/api/torrserver"
+	"torrentino/common/paginator"
+	"torrentino/common/utils"
 )
 
 type TorrserverList struct {
 	paginator.Paginator
 }
+
 // ----------------------------------------
 func logError(err error) {
 	log.Printf("[handlers/torrserver] %s", err)
 }
+
 // ----------------------------------------
 func NewPaginator() *TorrserverList {
 	var p TorrserverList
@@ -33,7 +35,7 @@ func (p *TorrserverList) ItemString(item_ any) string {
 
 	if item, ok := item_.(torrserver.TSListItem); ok {
 		return item.Title +
-		" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
+			" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
 	} else {
 		logError(fmt.Errorf("ItemString %s", "error"))
 	}
@@ -67,20 +69,19 @@ func (p *TorrserverList) LessItem(i int, j int, attributeKey string) bool {
 	b := p.Item(j).(torrserver.TSListItem)
 	switch attributeKey {
 	case "Size":
-		return a.Torrent_Size  < b.Torrent_Size
+		return a.Torrent_Size < b.Torrent_Size
 	}
 	return false
 }
 
-
 // method overload
 func (p *TorrserverList) Reload() {
 
-	var result, err = torrserver.List()
+	result, err := torrserver.List()
 	if err != nil {
 		logError(errors.Wrap(err, "Reload"))
 	}
-	
+
 	p.Alloc(len(*result))
 	for i := range *result {
 		p.Append((*result)[i])
@@ -88,8 +89,7 @@ func (p *TorrserverList) Reload() {
 	p.Paginator.Reload()
 }
 
-
-//-------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var p = NewPaginator()
 	p.Sorting.Setup([]paginator.SortHeader{

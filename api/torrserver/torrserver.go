@@ -31,8 +31,6 @@ type TSListItem struct {
 	}
 }
 
-type TSList []TSListItem
-
 var url = "http://" + common.Settings.Torrserver.Host + ":" + strconv.Itoa(common.Settings.Torrserver.Port) + "/torrents"
 
 /*
@@ -47,7 +45,7 @@ var url = "http://" + common.Settings.Torrserver.Host + ":" + strconv.Itoa(commo
    }
 */
 
-func List() (*TSList, error) {
+func List() (*[]TSListItem, error) {
 
 	res, err := http.Post(
 		url,
@@ -61,7 +59,7 @@ func List() (*TSList, error) {
 	if err != nil {
 		return nil, err
 	}
-	var List TSList
+	var List []TSListItem
 	err = json.Unmarshal(data, &List)
 	if err != nil {
 		return nil, err

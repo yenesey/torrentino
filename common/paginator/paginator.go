@@ -3,6 +3,7 @@ package paginator
 import (
 	"context"
 	"slices"
+
 	// "fmt"
 	"log"
 	"reflect"
@@ -91,8 +92,8 @@ func (p *Paginator) Append(item any) {
 
 func (p *Paginator) Delete(i int) {
 	idx := p.index[i]
-	p.list = slices.Delete(p.list, idx, idx+1)  // p.list = append(p.list[:idx], p.list[idx+1:]...)
-	p.Filter() // <-- just for rebuild the indexes
+	p.list = slices.Delete(p.list, idx, idx+1) // p.list = append(p.list[:idx], p.list[idx+1:]...)
+	p.Filter()                                 // <-- just for rebuild the indexes
 }
 
 func (p *Paginator) Item(i int) any {
@@ -156,15 +157,15 @@ func (p *Paginator) buildText() {
 	text = text + p.virtual.HeaderString() + hr
 	fromIndex, toIndex := p.pageBounds()
 	for i := fromIndex; i < toIndex; i++ {
-		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " + 
-		(func() string {
-			if p.selectedItem == i {
-				return "<u>" + p.virtual.ItemString(p.Item(i)) + "</u>"
-			} else {
-				return p.virtual.ItemString(p.Item(i))
-			}
-		})()	
-		if (i < toIndex-1) {
+		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " +
+			(func() string {
+				if p.selectedItem == i {
+					return "<u>" + p.virtual.ItemString(p.Item(i)) + "</u>"
+				} else {
+					return p.virtual.ItemString(p.Item(i))
+				}
+			})()
+		if i < toIndex-1 {
 			text = text + br
 		}
 	}
@@ -374,7 +375,9 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			if p.selectedItem != -1 {
 				for i := range p.actions {
 					if p.actions[i] == payload {
-						p.virtual.ItemActionExec(p.selectedItem, payload)
+						if p.virtual.ItemActionExec(p.selectedItem, payload) {
+							p.selectedItem = -1
+						}
 					}
 				}
 			}

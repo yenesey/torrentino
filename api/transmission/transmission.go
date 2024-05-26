@@ -32,8 +32,9 @@ func Pause(torrentId int64) (err error) {
 	return Transmission.TorrentStopIDs(context.TODO(), []int64{torrentId})
 }
 
-func List() (torrents []transmissionrpc.Torrent, err error) {
-	return Transmission.TorrentGetAll(context.TODO())
+func List() (torrents *[]transmissionrpc.Torrent, err error) {
+	t, err := Transmission.TorrentGetAll(context.TODO())
+	return &t, err 
 }
 
 func init() {

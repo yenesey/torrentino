@@ -15,6 +15,7 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/hekmon/transmissionrpc/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 )
@@ -34,6 +35,7 @@ type FindPaginator struct {
 func logError(err error) {
 	log.Printf("[handlers/torrent_find] %s", err)
 }
+
 // ----------------------------------------
 func NewPaginator(query string) *FindPaginator {
 	var fp FindPaginator
@@ -53,9 +55,9 @@ func (p *FindPaginator) ItemString(item any) string {
 		return data.Title +
 			" [" + utils.FormatFileSize(uint64(data.Size)) + "] [" + data.TrackerId + "]" +
 			" [" + strconv.Itoa(int(data.Seeders)) + "s/" + strconv.Itoa(int(data.Peers)) + "p]" +
-			(func() (result string) {	
+			(func() (result string) {
 				if data.InTorrents {
-					result += " [->downloading]"
+					result += " [->downloads]"
 				}
 				if data.InTorrserver {
 					result += " [->torrserver]"
@@ -126,7 +128,7 @@ func (p *FindPaginator) ItemActions(i int) (result []string) {
 func (p *FindPaginator) ItemActionExec(i int, actionKey string) bool {
 
 	item := p.Item(i).(*ListItem)
-	
+
 	var urlOrMagnet string
 	if item.Link != "" {
 		urlOrMagnet = item.Link
@@ -141,7 +143,7 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) bool {
 			logError(errors.Wrap(err, "ItemActionExec"))
 		}
 		item.InTorrents = true
-	
+
 	case "torrsrv":
 		err := torrserver.Add(item.MagnetUri, item.Title, getPosterLinkFromPage(item.Details))
 		if err != nil {
@@ -173,22 +175,49 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) bool {
 	return true
 }
 
+func mapIt[T any](listFunc func() (*[]T, error), attrValueFunc func(*T) string) (result map[string]bool) {
+	result = make(map[string]bool)
+	list, err := listFunc()
+	if err != nil {
+		logError(errors.Wrap(err, "hashIt"))
+		return
+	}
+	for i := range *list {
+		result[attrValueFunc(&(*list)[i])] = true
+	}
+	return
+}
+
 // method overload
 func (p *FindPaginator) Reload() {
 
-	var result, err = jackett.Query(p.query, nil)
+	result, err := jackett.Query(p.query, nil)
 	if err != nil {
-		logError(errors.Wrap(err, "Reload"))
+		logError(errors.Wrap(err, "jackett.Query"))
 	}
-	
-	p.Alloc(len(result.Results))
-	for i := range result.Results {
-		p.Append(&ListItem{result.Results[i], false, false})
+
+	downloadsMap := mapIt[transmissionrpc.Torrent](
+		transmission.List,
+		func(el *transmissionrpc.Torrent) string {
+			return *el.HashString
+		},
+	)
+	torrserverMap := mapIt[torrserver.TSListItem](
+		torrserver.List,
+		func(el *torrserver.TSListItem) string {
+			return el.Hash
+		},
+	)
+
+	p.Alloc(len(*result))
+	for i := range *result {
+		hash := (*result)[i].InfoHash
+		p.Append(&ListItem{(*result)[i], downloadsMap[hash], torrserverMap[hash]})
 	}
 	p.Paginator.Reload()
 }
 
-//-------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 func getPosterLinkFromPage(url string) string {
 
 	var findKey = func(attr []html.Attribute, key string) string {
@@ -225,7 +254,6 @@ func getPosterLinkFromPage(url string) string {
 	}
 	return ""
 }
-
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var p = NewPaginator(update.Message.Text)

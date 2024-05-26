@@ -135,7 +135,7 @@ func GetValidIndexers() (*[]Indexer, error) {
 	return &r, nil
 }
 
-func Query(str string, indexers []string) (*QueryResults, error) {
+func Query(str string, indexers []string) (*[]Result, error) {
 	const ERR_CTX = "failed query Jackett service"
 	//var url = j.url + "indexers/all/results?apikey=" + j.apiKey + "&Query=" + str
 	var u = "indexers/status:healthy,test:passed/results?apikey=" + apiKey
@@ -153,7 +153,7 @@ func Query(str string, indexers []string) (*QueryResults, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, ERR_CTX)
 	}
-	return &r, nil
+	return &r.Results, nil
 }
 
 func init() {
