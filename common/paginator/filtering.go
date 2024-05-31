@@ -1,9 +1,7 @@
 package paginator
 
 import (
-	// "reflect"
 	"slices"
-	"torrentino/common/utils"
 )
 
 type FilteringHeader struct {
