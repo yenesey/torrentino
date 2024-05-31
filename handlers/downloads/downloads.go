@@ -115,14 +115,11 @@ func (p *ListPaginator) FooterString() string {
 }
 
 // method overload
-func (p *ListPaginator) KeepItem(item any, attributeKey string, attributeValue string) bool {
-	testItem := item.(ListItem)
-	if attributeKey == "Status" {
-		if testItem.Status == attributeValue {
-			return true
-		}
+func (p *ListPaginator) AttributeByName(item any, attributeName string) string {
+	if attributeName == "Status" {
+		return item.(ListItem).Status
 	}
-	return false
+	return ""
 }
 
 // method overload

@@ -72,20 +72,14 @@ func (p *FindPaginator) ItemString(item any) string {
 }
 
 // method overload
-func (p *FindPaginator) KeepItem(item_ any, attributeKey string, attributeValue string) bool {
-	item := item_.(*ListItem)
-
-	if attributeKey == "TrackerId" {
-		if item.TrackerId == attributeValue {
-			return true
-		}
-	} else if attributeKey == "TrackerType" {
-		if item.TrackerType == attributeValue {
-			return true
-		}
+func (p *FindPaginator) AttributeByName(item any, attributeName string) string {
+	item_ := item.(*ListItem)
+	if attributeName == "TrackerId" {
+		return item_.TrackerId
+	} else if attributeName == "TrackerType" {
+		return item_.TrackerType
 	}
-
-	return false
+	return ""
 }
 
 // method overload
@@ -179,7 +173,7 @@ func mapIt[T any](listFunc func() (*[]T, error), attrValueFunc func(*T) string) 
 	result = make(map[string]bool)
 	list, err := listFunc()
 	if err != nil {
-		logError(errors.Wrap(err, "hashIt"))
+		logError(errors.Wrap(err, "mapIt"))
 		return
 	}
 	for i := range *list {
@@ -196,13 +190,13 @@ func (p *FindPaginator) Reload() {
 		logError(errors.Wrap(err, "jackett.Query"))
 	}
 
-	downloadsMap := mapIt[transmissionrpc.Torrent](
+	transmissionHashes := mapIt[transmissionrpc.Torrent](
 		transmission.List,
 		func(el *transmissionrpc.Torrent) string {
 			return *el.HashString
 		},
 	)
-	torrserverMap := mapIt[torrserver.TSListItem](
+	torrserverHashes := mapIt[torrserver.TSListItem](
 		torrserver.List,
 		func(el *torrserver.TSListItem) string {
 			return el.Hash
@@ -212,7 +206,7 @@ func (p *FindPaginator) Reload() {
 	p.Alloc(len(*result))
 	for i := range *result {
 		hash := (*result)[i].InfoHash
-		p.Append(&ListItem{(*result)[i], downloadsMap[hash], torrserverMap[hash]})
+		p.Append(&ListItem{(*result)[i], transmissionHashes[hash], torrserverHashes[hash]})
 	}
 	p.Paginator.Reload()
 }

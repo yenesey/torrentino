@@ -37,8 +37,8 @@ type VirtualMethods interface {
 	HeaderString() string
 	FooterString() string
 	ItemString(item any) string
-	KeepItem(item any, attributeKey string, attributeValue string) bool
-	LessItem(i int, j int, attributeKey string) bool
+	AttributeByName(item any, attributeName string) string
+	LessItem(i int, j int, attributeName string) bool
 	ItemActions(i int) []string
 	ItemActionExec(i int, actionKey string) bool
 	Reload()
@@ -125,11 +125,11 @@ func (p *Paginator) FooterString() string {
 	return ""
 }
 
-func (p *Paginator) KeepItem(item any, attributeKey string, attributeValue string) bool {
-	return true
+func (p *Paginator) AttributeByName(item any, attributeName string) string {
+	return ""
 }
 
-func (p *Paginator) LessItem(i int, j int, attributeKey string) bool {
+func (p *Paginator) LessItem(i int, j int, attributeName string) bool {
 	return false
 }
 
@@ -142,7 +142,8 @@ func (p *Paginator) ItemActionExec(i int, actionKey string) bool {
 }
 
 func (p *Paginator) Reload() {
-	p.Filtering.ClassifyItems(p.list)
+	p.Filtering.pg = p
+	p.Filtering.ClassifyItems()
 	p.Filter()
 	p.Sort()
 }
@@ -228,12 +229,12 @@ func (p *Paginator) buildKeyboard() {
 		for i := range p.Filtering.attributes {
 			row = []models.InlineKeyboardButton{}
 			for j := range p.Filtering.attributes[i].Values {
-				attributeKey := p.Filtering.attributes[i].Name
-				valueKey := p.Filtering.attributes[i].Values[j].Name
+				attributeName := p.Filtering.attributes[i].Name
+				attributeValue := p.Filtering.attributes[i].Values[j].Value
 				enabled := p.Filtering.attributes[i].Values[j].Enabled
 				row = append(row, models.InlineKeyboardButton{
-					Text:         []string{"", "✓"}[btoi(enabled)] + valueKey,
-					CallbackData: p.prefix + CB_FILTER_BY + attributeKey + "/" + valueKey,
+					Text:         []string{"", "✓"}[btoi(enabled)] + attributeValue,
+					CallbackData: p.prefix + CB_FILTER_BY + attributeName + "/" + attributeValue,
 				})
 			}
 			kbd = append(kbd, row)
@@ -364,11 +365,13 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 		case CB_ORDER_BY:
 			p.Sorting.ToggleKey(payload)
 			p.Sort()
+			p.selectedItem = -1
 		case CB_FILTER_BY:
 			var split = strings.Split(payload, "/")
 			var hdr = p.Filtering.Get(split[0], split[1])
 			hdr.Enabled = !hdr.Enabled
 			p.activePage = 0
+			p.selectedItem = -1
 			p.Filter()
 			p.Sort()
 		case CB_ACTION:

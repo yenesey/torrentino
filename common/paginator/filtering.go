@@ -1,39 +1,43 @@
 package paginator
 
 import (
-	"reflect"
+	// "reflect"
 	"slices"
+	"torrentino/common/utils"
 )
 
 type FilteringHeader struct {
-	Name    string
+	Value   string
 	Enabled bool
 }
 
+type void struct{}
+
 type FilteringAttribute struct {
-	Name   string
-	Values []FilteringHeader
-	mmap   map[string]bool
+	Name      string
+	Values    []FilteringHeader
+	valuesMap map[string]void
 }
 
 type FilteringState struct {
 	attributes []FilteringAttribute
+	pg         *Paginator
 }
 
-func (f *FilteringState) Setup(keys []string) {
-	f.attributes = make([]FilteringAttribute, len(keys))
-	for i, k := range keys {
-		f.attributes[i].Name = k
+func (f *FilteringState) Setup(attributes []string) {
+	f.attributes = make([]FilteringAttribute, len(attributes))
+	for i, attr := range attributes {
+		f.attributes[i].Name = attr
 		f.attributes[i].Values = make([]FilteringHeader, 0, 8)
-		f.attributes[i].mmap = make(map[string]bool)
+		f.attributes[i].valuesMap = make(map[string]void)
 	}
 }
 
-func (f *FilteringState) Get(attributeKey string, valueKey string) *FilteringHeader {
+func (f *FilteringState) Get(attributeName string, value string) *FilteringHeader {
 	for i := range f.attributes {
 		for j := range f.attributes[i].Values {
-			if (f.attributes[i].Name == attributeKey) &&
-				(f.attributes[i].Values[j].Name == valueKey) {
+			if (f.attributes[i].Name == attributeName) &&
+				(f.attributes[i].Values[j].Value == value) {
 				return &f.attributes[i].Values[j]
 			}
 		}
@@ -41,23 +45,25 @@ func (f *FilteringState) Get(attributeKey string, valueKey string) *FilteringHea
 	return nil
 }
 
-func (f *FilteringState) ClassifyItems(list []any) {
-	for i := range f.attributes {
-		countMap := make(map[string]bool) // count attributes currently present
-		for j := range list {
-			fieldValue := reflect.Indirect(reflect.ValueOf(list[j])).FieldByName(f.attributes[i].Name).String()
-			if _, ok := f.attributes[i].mmap[fieldValue]; !ok {
-				f.attributes[i].Values = append(f.attributes[i].Values, FilteringHeader{Name: fieldValue, Enabled: false})
-				f.attributes[i].mmap[fieldValue] = true
+func (f *FilteringState) ClassifyItems() {
+	// defer utils.TimeTrack(utils.Now(), "ClassifyItems")
+	for j := range f.attributes {
+		valuesNew := make(map[string]void) // count attributes currently present
+		for i := range f.pg.list {
+			// fieldValue := reflect.Indirect(reflect.ValueOf(f.pg.list[j])).FieldByName(f.attributes[j].Name).String()
+			fieldValue := f.pg.virtual.AttributeByName(f.pg.list[i], f.attributes[j].Name)
+			if _, ok := f.attributes[j].valuesMap[fieldValue]; !ok {
+				f.attributes[j].Values = append(f.attributes[j].Values, FilteringHeader{Value: fieldValue, Enabled: false})
+				f.attributes[j].valuesMap[fieldValue] = void{}
 			}
-			countMap[fieldValue] = true
+			valuesNew[fieldValue] = void{}
 		}
-		for fieldValue := range f.attributes[i].mmap {
-			if _, ok := countMap[fieldValue]; !ok {
+		for fieldValue := range f.attributes[j].valuesMap {
+			if _, ok := valuesNew[fieldValue]; !ok {
 				// remove filtering attributes that no more exists
-				idx := slices.IndexFunc(f.attributes[i].Values, func(el FilteringHeader) bool { return el.Name == fieldValue })
-				f.attributes[i].Values = slices.Delete(f.attributes[i].Values, idx, idx + 1)
-				delete(f.attributes[i].mmap, fieldValue)
+				idx := slices.IndexFunc(f.attributes[j].Values, func(el FilteringHeader) bool { return el.Value == fieldValue })
+				f.attributes[j].Values = slices.Delete(f.attributes[j].Values, idx, idx+1)
+				delete(f.attributes[j].valuesMap, fieldValue)
 			}
 		}
 	}
@@ -66,23 +72,23 @@ func (f *FilteringState) ClassifyItems(list []any) {
 // -------------------------------------------------------------
 
 func (p *Paginator) Filter() {
+	// defer utils.TimeTrack(utils.Now(), "Filtering")
 	p.index = p.index[:0] //p.index = make([]int, 0, len(p.list))
-	for li := range p.list {
+	for i := range p.list {
 		anyFilter := false
-		KeepItem := false
-		for i := range p.Filtering.attributes {
-			for j := range p.Filtering.attributes[i].Values {
-				enabled := p.Filtering.attributes[i].Values[j].Enabled
-				if enabled {
+		keepItem := false
+		for j := range p.Filtering.attributes {
+			for k := range p.Filtering.attributes[j].Values {
+				if p.Filtering.attributes[j].Values[k].Enabled {
 					anyFilter = true
-				}
-				if enabled && p.virtual.KeepItem(p.list[li], p.Filtering.attributes[i].Name, p.Filtering.attributes[i].Values[j].Name) {
-					KeepItem = true
+					if p.virtual.AttributeByName(p.list[i], p.Filtering.attributes[j].Name) == p.Filtering.attributes[j].Values[k].Value {
+						keepItem = true
+					}
 				}
 			}
 		}
-		if !anyFilter || (anyFilter && KeepItem) {
-			p.index = append(p.index, li)
+		if !anyFilter || (anyFilter && keepItem) {
+			p.index = append(p.index, i)
 		}
 	}
 }
