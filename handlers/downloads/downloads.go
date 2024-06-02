@@ -140,8 +140,8 @@ func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *ListPaginator) ItemActions(i int) (result []string) {
-	item := p.Item(i).(ListItem)
+func (p *ListPaginator) ItemActions(item_ any) (result []string) {
+	item := item_.(ListItem)
 
 	switch item.Status {
 	case "downloading", "seeding":
@@ -156,8 +156,8 @@ func (p *ListPaginator) ItemActions(i int) (result []string) {
 }
 
 // method overload
-func (p *ListPaginator) ItemActionExec(i int, actionKey string) bool {
-	item := p.Item(i).(ListItem)
+func (p *ListPaginator) ItemActionExec(item_ any, actionKey string) bool {
+	item := item_.(ListItem)
 	switch actionKey {
 	case "delete":
 		if item.ID != nil {
@@ -169,22 +169,12 @@ func (p *ListPaginator) ItemActionExec(i int, actionKey string) bool {
 				os.Remove(common.Settings.Download_dir + "/" + *item.Name)
 			}
 		}
-		p.Delete(i)
-		p.Refresh()
-		return true
-
 	case "start":
-		if transmission.Start(*item.ID) == nil {
-			p.Reload()
-			p.Refresh()
-		} else {
+		if transmission.Start(*item.ID) != nil {
 			logError(fmt.Errorf("transmission.Start"))
 		}
 	case "pause":
-		if transmission.Pause(*item.ID) == nil {
-			p.Reload()
-			p.Refresh()
-		} else {
+		if transmission.Pause(*item.ID) != nil {
 			logError(fmt.Errorf("transmission.Pause"))
 		}
 	}

@@ -17,6 +17,8 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hekmon/cunits/v2 v2.1.0 // indirect
+	github.com/j-muller/go-torrent-parser v0.0.0-20211014072822-db02b4099054 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
+	github.com/zeebo/bencode v1.0.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 )

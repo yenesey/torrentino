@@ -75,7 +75,6 @@ func List() (*[]TSListItem, error) {
 }
 
 func Add(link string, title string, poster string) error {
-
 	res, err := http.Post(
 		url,
 		"application/json",

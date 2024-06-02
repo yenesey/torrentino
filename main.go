@@ -45,7 +45,6 @@ func main() {
 	})
 
 	b.Start(ctx)
-
 }
 
 func securityMiddleware(next bot.HandlerFunc) bot.HandlerFunc {

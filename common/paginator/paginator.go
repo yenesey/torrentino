@@ -38,9 +38,9 @@ type VirtualMethods interface {
 	FooterString() string
 	ItemString(item any) string
 	AttributeByName(item any, attributeName string) string
+	ItemActions(item any) []string
+	ItemActionExec(item any, actionKey string) bool
 	LessItem(i int, j int, attributeName string) bool
-	ItemActions(i int) []string
-	ItemActionExec(i int, actionKey string) bool
 	Reload()
 }
 
@@ -133,11 +133,11 @@ func (p *Paginator) LessItem(i int, j int, attributeName string) bool {
 	return false
 }
 
-func (p *Paginator) ItemActions(i int) []string {
+func (p *Paginator) ItemActions(item any) []string {
 	return nil
 }
 
-func (p *Paginator) ItemActionExec(i int, actionKey string) bool {
+func (p *Paginator) ItemActionExec(item any, actionKey string) bool {
 	return true
 }
 
@@ -252,7 +252,7 @@ func (p *Paginator) buildKeyboard() {
 	kbd = append(kbd, row)
 
 	if !p.extControlsVisible && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
-		p.actions = p.virtual.ItemActions(p.selectedItem)
+		p.actions = p.virtual.ItemActions(p.Item(p.selectedItem))
 		row = []models.InlineKeyboardButton{}
 		for i := range p.actions {
 			row = append(row, models.InlineKeyboardButton{
@@ -301,8 +301,8 @@ func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) *models.Me
 }
 
 func (p *Paginator) Refresh() {
-	p.buildText()
 	p.buildKeyboard()
+	p.buildText()
 	if p.textChanged {
 		var _, err = p.Bot.EditMessageText(p.Ctx, &bot.EditMessageTextParams{
 			ChatID:    p.message.Chat.ID,
@@ -378,8 +378,9 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			if p.selectedItem != -1 {
 				for i := range p.actions {
 					if p.actions[i] == payload {
-						if p.virtual.ItemActionExec(p.selectedItem, payload) {
+						if p.virtual.ItemActionExec(p.Item(p.selectedItem), payload) {
 							p.selectedItem = -1
+							p.Reload()
 						}
 					}
 				}

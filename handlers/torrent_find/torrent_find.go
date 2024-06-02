@@ -18,6 +18,7 @@ import (
 	"github.com/hekmon/transmissionrpc/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
+	"github.com/j-muller/go-torrent-parser" 
 )
 
 type ListItem struct {
@@ -30,6 +31,9 @@ type FindPaginator struct {
 	paginator.Paginator
 	query string
 }
+
+var transmissionHashes map[string]bool
+var torrserverHashes map[string]bool
 
 // ----------------------------------------
 func logError(err error) {
@@ -100,9 +104,27 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *FindPaginator) ItemActions(i int) (result []string) {
+func (p *FindPaginator) ItemActions(item_ any) (result []string) {
 
-	item := p.Item(i).(*ListItem)
+	item := item_.(*ListItem)
+	if item.InfoHash == "" {
+		res, err := http.Get(item.Link)
+		if err != nil {
+			logError(errors.Wrap(err, "ItemActions:http.Get"))
+		}
+		torrent, err := gotorrentparser.Parse(res.Body)
+		if err != nil {
+			logError(errors.Wrap(err, "ItemActions:gotorrentparser.Parse"))
+		}
+		item.InfoHash = torrent.InfoHash
+		if transmissionHashes[item.InfoHash] {
+			item.InTorrents = true
+		}
+		if torrserverHashes[item.InfoHash] {
+			item.InTorrserver = true
+		}
+	}
+
 	if !item.InTorrents {
 		result = append(result, "download")
 	}
@@ -119,9 +141,9 @@ func (p *FindPaginator) ItemActions(i int) (result []string) {
 }
 
 // method overload
-func (p *FindPaginator) ItemActionExec(i int, actionKey string) bool {
+func (p *FindPaginator) ItemActionExec(item_ any, actionKey string) bool {
 
-	item := p.Item(i).(*ListItem)
+	item := item_.(*ListItem)
 
 	var urlOrMagnet string
 	if item.Link != "" {
@@ -135,16 +157,17 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) bool {
 		_, err := transmission.Add(urlOrMagnet)
 		if err != nil {
 			logError(errors.Wrap(err, "ItemActionExec"))
+		} else {
+			item.InTorrents = true
 		}
-		item.InTorrents = true
 
 	case "torrsrv":
-		err := torrserver.Add(item.MagnetUri, item.Title, getPosterLinkFromPage(item.Details))
+		err := torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details))
 		if err != nil {
 			logError(errors.Wrap(err, "ItemActionExec"))
+		} else {
+			item.InTorrserver = true
 		}
-		item.InTorrserver = true
-
 	case "web page":
 		p.Bot.SendMessage(p.Ctx, &bot.SendMessageParams{
 			ChatID:      p.ChatID,
@@ -190,13 +213,13 @@ func (p *FindPaginator) Reload() {
 		logError(errors.Wrap(err, "jackett.Query"))
 	}
 
-	transmissionHashes := mapIt[transmissionrpc.Torrent](
+	transmissionHashes = mapIt[transmissionrpc.Torrent](
 		transmission.List,
 		func(el *transmissionrpc.Torrent) string {
 			return *el.HashString
 		},
 	)
-	torrserverHashes := mapIt[torrserver.TSListItem](
+	torrserverHashes = mapIt[torrserver.TSListItem](
 		torrserver.List,
 		func(el *torrserver.TSListItem) string {
 			return el.Hash
