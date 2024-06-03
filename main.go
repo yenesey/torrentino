@@ -49,7 +49,7 @@ func main() {
 
 func securityMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		if update.Message != nil {
+		if (update != nil) && (update.Message != nil) {
 			if slices.Index(common.Settings.Users_list, update.Message.From.ID) == -1 {
 				log.Printf("%d (%s) say: %s", update.Message.From.ID, update.Message.From.Username, update.Message.Text)
 				return

@@ -80,7 +80,14 @@ func (p *ListPaginator) ItemString(item any) string {
 			" [" + utils.FormatFileSize(uint64(*data.DownloadedEver)) + "]" +
 			" [" + fmt.Sprintf("%.2f", *data.PercentDone*100) + "%]" +
 			" [" + fmt.Sprintf("%.2f", *data.UploadRatio) + "x]" +
-			" [" + data.Status + "]"
+			(func() string {
+				if data.Status != "stopped" {
+					return " [" + data.Status + ":" + fmt.Sprintf("%dp", *data.PeersConnected) + "]"
+				} else {
+					return " [" + data.Status + "]"
+				}
+			})()
+
 	} else {
 		logError(fmt.Errorf("ItemString - error get item data"))
 	}
