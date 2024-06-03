@@ -82,7 +82,11 @@ func (p *ListPaginator) ItemString(item any) string {
 			" [" + fmt.Sprintf("%.2f", *data.UploadRatio) + "x]" +
 			(func() string {
 				if data.Status != "stopped" {
-					return " [" + data.Status + ":" + fmt.Sprintf("%dp", *data.PeersConnected) + "]"
+					var peersConnected int64
+					if data.PeersConnected != nil {
+						peersConnected = *data.PeersConnected
+					}
+					return " [" + data.Status + ":" + fmt.Sprintf("%dp", peersConnected) + "]"
 				} else {
 					return " [" + data.Status + "]"
 				}
