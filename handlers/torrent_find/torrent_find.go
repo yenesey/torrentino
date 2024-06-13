@@ -47,8 +47,6 @@ func NewPaginator(query string) *FindPaginator {
 		*paginator.New(&fp, "find", 4),
 		query,
 	}
-	//todo: 1 get torrent_list
-	//todo: 2 check each list[i] item is already downloading...
 	return &fp
 }
 
@@ -67,10 +65,16 @@ func (p *FindPaginator) ItemString(item any) string {
 					result += " [->torrserver]"
 				}
 				return
+			})() +
+			(func() string {
+				if data.Link != "" {
+					return " [L:]"
+				}
+				return ""
 			})()
 
 	} else {
-		logError(fmt.Errorf("ItemString %s", "error"))
+		logError(fmt.Errorf("ItemString - type assertion error"))
 	}
 	return ""
 }
@@ -98,7 +102,10 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 	case "Peers":
 		return a.Peers < b.Peers
 	case "Link":
-		return a.Link < b.Link
+		if a.Link == "" && b.Link != "" {
+			return true
+		} 
+		return false
 	}
 	return false
 }
@@ -141,7 +148,7 @@ func (p *FindPaginator) ItemActions(item_ any) (result []string) {
 }
 
 // method overload
-func (p *FindPaginator) ItemActionExec(item_ any, actionKey string) bool {
+func (p *FindPaginator) ItemActionExec(item_ any, actionKey string) (unselectItem bool) {
 
 	item := item_.(*ListItem)
 

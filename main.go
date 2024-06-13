@@ -19,6 +19,7 @@ import (
 )
 
 func main() {
+	log.Println("[Torrentino]: startup")
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()

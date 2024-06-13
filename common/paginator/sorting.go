@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-var sortChars = [...]string{"", "⏷", "⏶"}
+var sortChars = [...]string{"", "▼", "▲"}
 
 type SortHeader struct {
 	Name      string // attribute name in List items

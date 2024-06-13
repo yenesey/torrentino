@@ -39,7 +39,7 @@ type VirtualMethods interface {
 	ItemString(item any) string
 	AttributeByName(item any, attributeName string) string
 	ItemActions(item any) []string
-	ItemActionExec(item any, actionKey string) bool
+	ItemActionExec(item any, actionKey string) (unselectItem bool)
 	LessItem(i int, j int, attributeName string) bool
 	Reload()
 }
@@ -137,7 +137,7 @@ func (p *Paginator) ItemActions(item any) []string {
 	return nil
 }
 
-func (p *Paginator) ItemActionExec(item any, actionKey string) bool {
+func (p *Paginator) ItemActionExec(item any, actionKey string)  (unselectItem bool) {
 	return true
 }
 
@@ -380,13 +380,11 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 					if p.actions[i] == payload {
 						if p.virtual.ItemActionExec(p.Item(p.selectedItem), payload) {
 							p.selectedItem = -1
-							p.Reload()
 						}
 					}
 				}
 			}
 		}
 	}
-
 	p.Refresh()
 }

@@ -16,6 +16,7 @@ import (
 	"torrentino/common/utils"
 
 	"github.com/hekmon/transmissionrpc/v2"
+	"github.com/pkg/errors"
 
 	"github.com/gensword/collections"
 
@@ -74,26 +75,40 @@ func (p *ListPaginator) ItemString(item any) string {
 		if data.IsDir {
 			result = "📁[" + strconv.Itoa(data.ExtCount) + "x | " + data.Ext + "]"
 		}
+		var peersGettingFromUs int64
+		var peersSendingToUs int64
+		var uploadRatio float64
+		if data.PeersSendingToUs == nil {
+			data.PeersSendingToUs = &peersSendingToUs
+		}
+
+		if data.PeersGettingFromUs == nil {
+			data.PeersConnected = &peersGettingFromUs
+		}
+
+		if data.UploadRatio == nil || *data.UploadRatio < 0 {
+			data.UploadRatio = &uploadRatio
+		}
+
 		result = result +
 			ExtIcons[data.Ext] +
 			"" + *data.Name +
 			" [" + utils.FormatFileSize(uint64(*data.DownloadedEver)) + "]" +
-			" [" + fmt.Sprintf("%.2f", *data.PercentDone*100) + "%]" +
+			" [" + fmt.Sprintf("%.0f", *data.PercentDone*100) + "%]" +
 			" [" + fmt.Sprintf("%.2f", *data.UploadRatio) + "x]" +
 			(func() string {
-				if data.Status != "stopped" {
-					var peersConnected int64
-					if data.PeersConnected != nil {
-						peersConnected = *data.PeersConnected
-					}
-					return " [" + data.Status + ":" + fmt.Sprintf("%dp", peersConnected) + "]"
-				} else {
-					return " [" + data.Status + "]"
+				switch data.Status {
+				case "seeding":
+					return " [" + data.Status + ":" + fmt.Sprintf("%dp", *data.PeersGettingFromUs) + "]"
+				case "downloading":
+					return " [" + data.Status + ":" + fmt.Sprintf("%dp", *data.PeersSendingToUs) + "]"
 				}
+				return " [" + data.Status + "]"
+
 			})()
 
 	} else {
-		logError(fmt.Errorf("ItemString - error get item data"))
+		logError(fmt.Errorf("ItemString - type assertion error"))
 	}
 	return result
 }
@@ -118,8 +133,8 @@ func (p *ListPaginator) FooterString() string {
 		uploaded += uint64(*item.UploadRatio * float64(*item.DownloadedEver))
 	}
 
-	return utils.FormatFileSize(downloaded) + " dwn / " +
-		utils.FormatFileSize(uploaded) + " upl " + "\n" +
+	return utils.FormatFileSize(downloaded) + " downoad / " +
+		utils.FormatFileSize(uploaded) + " upload " + "\nvolume: " +
 		utils.FormatFileSize(diskUsed) + " used / " +
 		utils.FormatFileSize(diskFree) + " free"
 	// + utils.FormatFileSize(diskAll) + " total "
@@ -167,26 +182,32 @@ func (p *ListPaginator) ItemActions(item_ any) (result []string) {
 }
 
 // method overload
-func (p *ListPaginator) ItemActionExec(item_ any, actionKey string) bool {
+func (p *ListPaginator) ItemActionExec(item_ any, actionKey string) (unSelectItem bool) {
+	var err error
 	item := item_.(ListItem)
 	switch actionKey {
 	case "delete":
 		if item.ID != nil {
-			transmission.Delete(*item.ID)
+			err = transmission.Delete(*item.ID)
 		} else {
 			if item.IsDir {
-				os.RemoveAll(common.Settings.Download_dir + "/" + *item.Name)
+				err = os.RemoveAll(common.Settings.Download_dir + "/" + *item.Name)
 			} else {
-				os.Remove(common.Settings.Download_dir + "/" + *item.Name)
+				err = os.Remove(common.Settings.Download_dir + "/" + *item.Name)
 			}
 		}
+		if err != nil {
+			logError(errors.Wrap(err, "ItemActionExec"))
+		}
 	case "start":
-		if transmission.Start(*item.ID) != nil {
-			logError(fmt.Errorf("transmission.Start"))
+		err = transmission.Start(*item.ID)
+		if err != nil {
+			logError(errors.Wrap(err, "ItemActionExec"))
 		}
 	case "pause":
-		if transmission.Pause(*item.ID) != nil {
-			logError(fmt.Errorf("transmission.Pause"))
+		err = transmission.Pause(*item.ID)
+		if err != nil {
+			logError(errors.Wrap(err, "ItemActionExec"))
 		}
 	}
 	return true
@@ -197,7 +218,8 @@ func (p *ListPaginator) Reload() {
 
 	torrents, err := transmission.List()
 	if err != nil {
-		log.Fatal(err)
+		logError(errors.Wrap(err, "Reload"))
+		return
 	}
 
 	listItems := make([]ListItem, len(*torrents), len(*torrents)*2)
@@ -219,7 +241,7 @@ func (p *ListPaginator) Reload() {
 
 	dir, err := utils.ReadDir(common.Settings.Download_dir, false)
 	if err != nil {
-		logError(err)
+		logError(errors.Wrap(err, "Reload"))
 	} else {
 
 		for dirEntry := range dir {
