@@ -10,7 +10,7 @@ Integrates with:
  - clone this repo and build binary:
 ```
 \> git clone https://github.com/yenesey/torrentino.git
-\> torrentino
+\> cd torrentino
 \> go build
 ```
 

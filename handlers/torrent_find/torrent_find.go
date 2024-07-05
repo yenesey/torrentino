@@ -74,7 +74,7 @@ func (p *FindPaginator) ItemString(item any) string {
 			})()
 
 	} else {
-		logError(fmt.Errorf("ItemString - type assertion error"))
+		logError(fmt.Errorf("ItemString: type assertion error"))
 	}
 	return ""
 }
@@ -117,11 +117,11 @@ func (p *FindPaginator) ItemActions(item_ any) (result []string) {
 	if item.InfoHash == "" {
 		res, err := http.Get(item.Link)
 		if err != nil {
-			logError(errors.Wrap(err, "ItemActions:http.Get"))
+			logError(errors.Wrap(err, "ItemActions: http.Get"))
 		}
 		torrent, err := gotorrentparser.Parse(res.Body)
 		if err != nil {
-			logError(errors.Wrap(err, "ItemActions:gotorrentparser.Parse"))
+			logError(errors.Wrap(err, "ItemActions: gotorrentparser.Parse"))
 		}
 		item.InfoHash = torrent.InfoHash
 		if transmissionHashes[item.InfoHash] {
@@ -217,7 +217,7 @@ func (p *FindPaginator) Reload() {
 
 	result, err := jackett.Query(p.query, nil)
 	if err != nil {
-		logError(errors.Wrap(err, "jackett.Query"))
+		logError(errors.Wrap(err, "Reload: jackett.Query"))
 	}
 
 	transmissionHashes = mapIt[transmissionrpc.Torrent](
@@ -255,7 +255,7 @@ func getPosterLinkFromPage(url string) string {
 
 	doc, err := htmlquery.LoadURL(url)
 	if err != nil {
-		logError(errors.Wrap(err, "getPosterLinkFromPage"))
+		logError(errors.Wrap(err, "getPosterLinkFromPage: htmlquery.LoadURL"))
 	}
 
 	poster := htmlquery.Find(doc, "//var[@class=\"postImg postImgAligned img-right\"]") // rutracker
