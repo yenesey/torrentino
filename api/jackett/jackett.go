@@ -120,40 +120,37 @@ func httpGet(addUrl string) (*[]byte, error) {
 }
 
 func GetValidIndexers() (*[]Indexer, error) {
-	const ERR_CTX = "GetValidIndexers"
 	var r []Indexer
 
 	data, err := httpGet("indexers?Configured=true")
 	if err != nil {
-		return nil, errors.Wrap(err, ERR_CTX)
+		return nil, errors.Wrap(err, "GetValidIndexers")
 	}
 
 	err = json.Unmarshal(*data, &r)
 	if err != nil {
-		return nil, errors.Wrap(err, ERR_CTX)
+		return nil, errors.Wrap(err, "GetValidIndexers")
 	}
 
 	return &r, nil
 }
 
 func Query(str string, indexers []string) (*[]Result, error) {
-	const ERR_CTX = "failed query Jackett service"
-	// var url = j.url + "indexers/all/results?apikey=" + j.apiKey + "&Query=" + str
+
 	var u = "indexers/status:healthy,test:passed/results?apikey=" + apiKey
-	// var u = "indexers/" + strings.Join(indexers, ",") +  "/results?apikey=" + apiKey
 	for _, indexer := range indexers {
 		u = u + "&Tracker[]=" + indexer
 	}
 	u = u + "&Query=" + url.QueryEscape(str)
 	data, err := httpGet(u)
 	if err != nil {
-		return nil, errors.Wrap(err, ERR_CTX)
+		return nil, errors.Wrap(err, "Query")
 	}
 
 	var r QueryResults
 	err = json.Unmarshal(*data, &r)
 	if err != nil {
-		return nil, errors.Wrap(err, ERR_CTX)
+		return nil, errors.Wrap(err, "Query")
 	}
 	return &r.Results, nil
 }
