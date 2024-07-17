@@ -9,6 +9,7 @@ import (
 	"torrentino/api/jackett"
 	"torrentino/api/torrserver"
 	"torrentino/api/transmission"
+	"torrentino/common"
 	"torrentino/common/paginator"
 	"torrentino/common/utils"
 
@@ -16,9 +17,9 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/hekmon/transmissionrpc/v2"
+	gotorrentparser "github.com/j-muller/go-torrent-parser"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
-	"github.com/j-muller/go-torrent-parser" 
 )
 
 type ListItem struct {
@@ -34,6 +35,14 @@ type FindPaginator struct {
 
 var transmissionHashes map[string]bool
 var torrserverHashes map[string]bool
+
+/*
+var client = &http.Client{
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+*/
 
 // ----------------------------------------
 func logError(err error) {
@@ -104,7 +113,7 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 	case "Link":
 		if a.Link == "" && b.Link != "" {
 			return true
-		} 
+		}
 		return false
 	}
 	return false
@@ -115,15 +124,27 @@ func (p *FindPaginator) ItemActions(item_ any) (result []string) {
 
 	item := item_.(*ListItem)
 	if item.InfoHash == "" {
+
 		res, err := http.Get(item.Link)
 		if err != nil {
 			logError(errors.Wrap(err, "ItemActions: http.Get"))
+		} else {
+			torrent, err := gotorrentparser.Parse(res.Body)
+			if err != nil {
+				logError(errors.Wrap(err, "ItemActions: gotorrentparser.Parse"))
+			}
+			item.InfoHash = torrent.InfoHash
 		}
-		torrent, err := gotorrentparser.Parse(res.Body)
-		if err != nil {
-			logError(errors.Wrap(err, "ItemActions: gotorrentparser.Parse"))
-		}
-		item.InfoHash = torrent.InfoHash
+		/*
+			res, err := client.Get(item.Link)
+			if res.StatusCode == 302 && res.Header.Get("Location") != "" {
+				m, err := metainfo.ParseMagnetUri(res.Header.Get("Location"))
+				if err == nil {
+					item.InfoHash = m.InfoHash.String()
+				}
+			} else {
+			}
+		*/
 		if transmissionHashes[item.InfoHash] {
 			item.InTorrents = true
 		}
@@ -187,6 +208,7 @@ func (p *FindPaginator) ItemActionExec(item_ any, actionKey string) (unselectIte
 		res, err := http.Get(item.Link)
 		if err != nil {
 			logError(errors.Wrap(err, "ItemActionExec"))
+			return false
 		}
 		p.Bot.SendDocument(p.Ctx, &bot.SendDocumentParams{
 			ChatID:      p.ChatID,
@@ -215,9 +237,10 @@ func mapIt[T any](listFunc func() (*[]T, error), attrValueFunc func(*T) string) 
 // method overload
 func (p *FindPaginator) Reload() {
 
-	result, err := jackett.Query(p.query, nil)
+	result, err := jackett.Query(p.query, common.Settings.Jackett.Indexers)
 	if err != nil {
 		logError(errors.Wrap(err, "Reload: jackett.Query"))
+		return
 	}
 
 	transmissionHashes = mapIt[transmissionrpc.Torrent](

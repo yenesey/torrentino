@@ -20,7 +20,8 @@ Integrates with:
     "jackett" : {
         "host" : "host_name_or_ip",
         "port" : 9117,
-        "api_key" : "***"
+        "api_key" : "***",
+        "indexers" : []
     },
     "transmission" : {
         "host" : "host_name_or_ip",

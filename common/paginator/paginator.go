@@ -137,7 +137,7 @@ func (p *Paginator) ItemActions(item any) []string {
 	return nil
 }
 
-func (p *Paginator) ItemActionExec(item any, actionKey string)  (unselectItem bool) {
+func (p *Paginator) ItemActionExec(item any, actionKey string) (unselectItem bool) {
 	return true
 }
 
@@ -236,8 +236,14 @@ func (p *Paginator) buildKeyboard() {
 					Text:         []string{"", "✓"}[btoi(enabled)] + attributeValue,
 					CallbackData: p.prefix + CB_FILTER_BY + attributeName + "/" + attributeValue,
 				})
+				if (j+1) % 4 == 0 { // 4 buttons max
+					kbd = append(kbd, row)
+					row = []models.InlineKeyboardButton{}
+				}
 			}
-			kbd = append(kbd, row)
+			if len(row) > 0 {
+				kbd = append(kbd, row)
+			}
 		}
 	}
 

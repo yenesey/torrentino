@@ -1,6 +1,8 @@
 module torrentino
 
-go 1.21.6
+go 1.22
+
+toolchain go1.22.0
 
 require github.com/go-telegram/bot v1.2.2
 
@@ -10,7 +12,7 @@ require (
 	github.com/hekmon/transmissionrpc/v2 v2.0.1
 	github.com/j-muller/go-torrent-parser v0.0.0-20211014072822-db02b4099054
 	github.com/pkg/errors v0.9.1
-	golang.org/x/net v0.7.0
+	golang.org/x/net v0.23.0
 )
 
 require (
@@ -20,5 +22,5 @@ require (
 	github.com/hekmon/cunits/v2 v2.1.0 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/zeebo/bencode v1.0.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 )

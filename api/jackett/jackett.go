@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -107,7 +108,7 @@ func httpGet(addUrl string) (*[]byte, error) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return nil, err
+		return nil, fmt.Errorf(res.Status)
 	}
 
 	data, err := io.ReadAll(res.Body)
@@ -137,8 +138,9 @@ func GetValidIndexers() (*[]Indexer, error) {
 
 func Query(str string, indexers []string) (*[]Result, error) {
 	const ERR_CTX = "failed query Jackett service"
-	//var url = j.url + "indexers/all/results?apikey=" + j.apiKey + "&Query=" + str
+	// var url = j.url + "indexers/all/results?apikey=" + j.apiKey + "&Query=" + str
 	var u = "indexers/status:healthy,test:passed/results?apikey=" + apiKey
+	// var u = "indexers/" + strings.Join(indexers, ",") +  "/results?apikey=" + apiKey
 	for _, indexer := range indexers {
 		u = u + "&Tracker[]=" + indexer
 	}
