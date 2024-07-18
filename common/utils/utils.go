@@ -2,9 +2,12 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -84,4 +87,23 @@ func ReadDir(rootPath string, recursive bool) (<-chan FileInfo, error) {
 		close(channel)
 	}()
 	return channel, err
+}
+
+func LogError(err error) {
+	pc, file, line, _ := runtime.Caller(1)
+	_, fileName := path.Split(file)
+	parts := strings.Split(runtime.FuncForPC(pc).Name(), ".")
+/*
+	pl := len(parts)
+	packageName := ""
+	funcName := parts[pl-1]
+
+	if parts[pl-2][0] == '(' {
+		funcName = parts[pl-2] + "." + funcName
+		packageName = strings.Join(parts[0:pl-2], ".")
+	} else {
+		packageName = strings.Join(parts[0:pl-1], ".")
+	}
+	*/
+	log.Printf("[%s]: %s", parts[0]+"("+fileName+")."+parts[1]+"("+strconv.Itoa(line)+")", err)
 }

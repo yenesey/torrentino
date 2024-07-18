@@ -4,12 +4,12 @@ import (
 	"context"
 	"slices"
 
-	// "fmt"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"torrentino/common/utils"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -26,11 +26,6 @@ const (
 )
 
 var callbackHandler map[string]string = make(map[string]string)
-
-// ----------------------------------------
-func logError(err error) {
-	log.Printf("[common/paginator] %s", err)
-}
 
 // ----------------------------------------
 type VirtualMethods interface {
@@ -301,7 +296,7 @@ func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) *models.Me
 		ReplyMarkup: p.kbd,
 	})
 	if err != nil {
-		logError(err)
+		utils.LogError(err)
 	}
 	return p.message
 }
@@ -319,7 +314,7 @@ func (p *Paginator) Refresh() {
 			ReplyMarkup: p.kbd,
 		})
 		if err != nil {
-			logError(err)
+			utils.LogError(err)
 		}
 	}
 
@@ -331,7 +326,7 @@ func (p *Paginator) Refresh() {
 			ReplyMarkup: p.kbd,
 		})
 		if err != nil {
-			logError(err)
+			utils.LogError(err)
 		}
 	}
 }

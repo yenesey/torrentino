@@ -2,7 +2,7 @@ package downloads
 
 import (
 	"fmt"
-	"log"
+
 	"os"
 	"path"
 	"path/filepath"
@@ -55,11 +55,6 @@ type ListPaginator struct {
 }
 
 // ----------------------------------------
-func logError(err error) {
-	log.Printf("[handlers/dowloads] %s", err)
-}
-
-// ----------------------------------------
 func NewPaginator() *ListPaginator {
 	var p ListPaginator
 	p = ListPaginator{
@@ -108,7 +103,7 @@ func (p *ListPaginator) ItemString(item any) string {
 			})()
 
 	} else {
-		logError(fmt.Errorf("ItemString - type assertion error"))
+		utils.LogError(fmt.Errorf("ItemString - type assertion error"))
 	}
 	return result
 }
@@ -197,17 +192,17 @@ func (p *ListPaginator) ItemActionExec(item_ any, actionKey string) (unSelectIte
 			}
 		}
 		if err != nil {
-			logError(errors.Wrap(err, "ItemActionExec"))
+			utils.LogError(errors.Wrap(err, "ItemActionExec"))
 		}
 	case "start":
 		err = transmission.Start(*item.ID)
 		if err != nil {
-			logError(errors.Wrap(err, "ItemActionExec"))
+			utils.LogError(errors.Wrap(err, "ItemActionExec"))
 		}
 	case "pause":
 		err = transmission.Pause(*item.ID)
 		if err != nil {
-			logError(errors.Wrap(err, "ItemActionExec"))
+			utils.LogError(errors.Wrap(err, "ItemActionExec"))
 		}
 	}
 	return true
@@ -218,7 +213,7 @@ func (p *ListPaginator) Reload() {
 
 	torrents, err := transmission.List()
 	if err != nil {
-		logError(errors.Wrap(err, "Reload"))
+		utils.LogError(errors.Wrap(err, "Reload"))
 		return
 	}
 
@@ -241,7 +236,7 @@ func (p *ListPaginator) Reload() {
 
 	dir, err := utils.ReadDir(common.Settings.Download_dir, false)
 	if err != nil {
-		logError(errors.Wrap(err, "Reload"))
+		utils.LogError(errors.Wrap(err, "Reload"))
 	} else {
 
 		for dirEntry := range dir {
@@ -263,7 +258,7 @@ func (p *ListPaginator) Reload() {
 							size += subs.Size
 						}
 					} else {
-						logError(err)
+						utils.LogError(err)
 					}
 				}
 				if len(extCounter.MostCommon(1)) > 0 {

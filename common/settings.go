@@ -2,10 +2,10 @@ package common
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 
 	"github.com/pkg/errors"
+	"torrentino/common/utils"
 )
 
 type hostPort struct {
@@ -28,17 +28,13 @@ type SettingsStruct struct {
 
 var Settings SettingsStruct
 
-func logError(err error) {
-	log.Printf("[common/settings] %s", err)
-}
-
 func init() {
 	data, err := os.ReadFile("./settings.json")
 	if err != nil {
-		logError(errors.Wrap(err, "readFile"))
+		utils.LogError(errors.Wrap(err, "readFile"))
 	}
 	err = json.Unmarshal(data, &Settings)
 	if err != nil {
-		logError(errors.Wrap(err, "Unmarshal"))
+		utils.LogError(err)
 	}
 }

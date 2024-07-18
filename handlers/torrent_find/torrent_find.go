@@ -3,7 +3,6 @@ package torrent_find
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"torrentino/api/jackett"
@@ -45,11 +44,6 @@ var client = &http.Client{
 */
 
 // ----------------------------------------
-func logError(err error) {
-	log.Printf("[handlers/torrent_find] %s", err)
-}
-
-// ----------------------------------------
 func NewPaginator(query string) *FindPaginator {
 	var fp FindPaginator
 	fp = FindPaginator{
@@ -83,7 +77,7 @@ func (p *FindPaginator) ItemString(item any) string {
 			})()
 
 	} else {
-		logError(fmt.Errorf("ItemString: type assertion error"))
+		utils.LogError(fmt.Errorf("ItemString: type assertion error"))
 	}
 	return ""
 }
@@ -127,11 +121,11 @@ func (p *FindPaginator) ItemActions(item_ any) (result []string) {
 
 		res, err := http.Get(item.Link)
 		if err != nil {
-			logError(errors.Wrap(err, "ItemActions: http.Get"))
+			utils.LogError(errors.Wrap(err, "ItemActions: http.Get"))
 		} else {
 			torrent, err := gotorrentparser.Parse(res.Body)
 			if err != nil {
-				logError(errors.Wrap(err, "ItemActions: gotorrentparser.Parse"))
+				utils.LogError(errors.Wrap(err, "ItemActions: gotorrentparser.Parse"))
 			}
 			item.InfoHash = torrent.InfoHash
 		}
@@ -184,7 +178,7 @@ func (p *FindPaginator) ItemActionExec(item_ any, actionKey string) (unselectIte
 	case "download":
 		_, err := transmission.Add(urlOrMagnet)
 		if err != nil {
-			logError(errors.Wrap(err, "ItemActionExec"))
+			utils.LogError(errors.Wrap(err, "ItemActionExec"))
 		} else {
 			item.InTorrents = true
 		}
@@ -192,7 +186,7 @@ func (p *FindPaginator) ItemActionExec(item_ any, actionKey string) (unselectIte
 	case "torrsrv":
 		err := torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details))
 		if err != nil {
-			logError(errors.Wrap(err, "ItemActionExec"))
+			utils.LogError(errors.Wrap(err, "ItemActionExec"))
 		} else {
 			item.InTorrserver = true
 		}
@@ -207,7 +201,7 @@ func (p *FindPaginator) ItemActionExec(item_ any, actionKey string) (unselectIte
 	case ".torrent":
 		res, err := http.Get(item.Link)
 		if err != nil {
-			logError(errors.Wrap(err, "ItemActionExec"))
+			utils.LogError(errors.Wrap(err, "ItemActionExec"))
 			return false
 		}
 		p.Bot.SendDocument(p.Ctx, &bot.SendDocumentParams{
@@ -225,7 +219,7 @@ func mapIt[T any](listFunc func() (*[]T, error), attrValueFunc func(*T) string) 
 	result = make(map[string]bool)
 	list, err := listFunc()
 	if err != nil {
-		logError(errors.Wrap(err, "mapIt"))
+		utils.LogError(errors.Wrap(err, "mapIt"))
 		return
 	}
 	for i := range *list {
@@ -239,7 +233,7 @@ func (p *FindPaginator) Reload() {
 
 	result, err := jackett.Query(p.query, common.Settings.Jackett.Indexers)
 	if err != nil {
-		logError(errors.Wrap(err, "Reload: jackett.Query"))
+		utils.LogError(errors.Wrap(err, "Reload: jackett.Query"))
 		return
 	}
 
@@ -278,7 +272,7 @@ func getPosterLinkFromPage(url string) string {
 
 	doc, err := htmlquery.LoadURL(url)
 	if err != nil {
-		logError(errors.Wrap(err, "getPosterLinkFromPage: htmlquery.LoadURL"))
+		utils.LogError(errors.Wrap(err, "getPosterLinkFromPage: htmlquery.LoadURL"))
 	}
 
 	poster := htmlquery.Find(doc, "//var[@class=\"postImg postImgAligned img-right\"]") // rutracker
