@@ -210,28 +210,26 @@ func (p *Paginator) buildKeyboard() {
 		kbd = append(kbd, row)
 	}
 
-	row = []models.InlineKeyboardButton{}
 	if p.extControlsVisible {
-		for i := range p.Sorting.headers {
-			v := &p.Sorting.headers[i]
+		row = []models.InlineKeyboardButton{}
+		for _, v := range p.Sorting.headers {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         v.ShortName + sortChars[int(v.Order)],
 				CallbackData: p.prefix + CB_ORDER_BY + v.Name,
 			})
 		}
-		kbd = append(kbd, row)
+		if len(row) > 0 {
+			kbd = append(kbd, row)
+		}
 
-		for i := range p.Filtering.attributes {
+		for _, attr := range p.Filtering.attributes {
 			row = []models.InlineKeyboardButton{}
-			for j := range p.Filtering.attributes[i].Values {
-				attributeName := p.Filtering.attributes[i].Name
-				attributeValue := p.Filtering.attributes[i].Values[j].Value
-				enabled := p.Filtering.attributes[i].Values[j].Enabled
+			for j, val := range attr.Values {
 				row = append(row, models.InlineKeyboardButton{
-					Text:         []string{"", "✓"}[btoi(enabled)] + attributeValue,
-					CallbackData: p.prefix + CB_FILTER_BY + attributeName + "/" + attributeValue,
+					Text:         []string{"", "✓"}[btoi(val.Enabled)] + val.Value,
+					CallbackData: p.prefix + CB_FILTER_BY + attr.Name + "/" + val.Value,
 				})
-				if (j+1) % 4 == 0 { // 4 buttons max
+				if (j+1)%4 == 0 { // 4 buttons max
 					kbd = append(kbd, row)
 					row = []models.InlineKeyboardButton{}
 				}
@@ -255,17 +253,19 @@ func (p *Paginator) buildKeyboard() {
 	if !p.extControlsVisible && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
 		p.actions = p.virtual.ItemActions(p.Item(p.selectedItem))
 		row = []models.InlineKeyboardButton{}
-		for i := range p.actions {
+		for i, action := range p.actions {
 			row = append(row, models.InlineKeyboardButton{
-				Text:         p.actions[i],
-				CallbackData: p.prefix + CB_ACTION + p.actions[i],
+				Text:         action,
+				CallbackData: p.prefix + CB_ACTION + action,
 			})
 			if (i+1)%2 == 0 {
 				kbd = append(kbd, row)
 				row = []models.InlineKeyboardButton{}
 			}
 		}
-		kbd = append(kbd, row)
+		if len(row) > 0 {
+			kbd = append(kbd, row)
+		}
 	}
 
 	p.kbdChanged = !reflect.DeepEqual(kbd, p.kbd.InlineKeyboard)
