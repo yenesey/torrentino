@@ -273,6 +273,7 @@ func getPosterLinkFromPage(url string) string {
 	doc, err := htmlquery.LoadURL(url)
 	if err != nil {
 		utils.LogError(errors.Wrap(err, "getPosterLinkFromPage: htmlquery.LoadURL"))
+		return ""
 	}
 
 	poster := htmlquery.Find(doc, "//var[@class=\"postImg postImgAligned img-right\"]") // rutracker

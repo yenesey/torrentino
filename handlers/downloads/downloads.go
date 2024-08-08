@@ -226,9 +226,10 @@ func (p *ListPaginator) Reload() {
 		for _, file := range (*torrents)[i].Files {
 			extCounter.Add(filepath.Ext((*file).Name))
 		}
-		listItems[i].Ext = strings.ToLower(extCounter.MostCommon(1)[0].Key.(string))
-		listItems[i].ExtCount = extCounter.MostCommon(1)[0].Value
-
+		if extCounter.Len() > 0 {
+			listItems[i].Ext = strings.ToLower(extCounter.MostCommon(1)[0].Key.(string))
+			listItems[i].ExtCount = extCounter.MostCommon(1)[0].Value
+		}
 		listItems[i].IsDir = listItems[i].ExtCount > 1
 		listItems[i].Status = (*torrents)[i].Status.String()
 		torrentNames[*listItems[i].Name] = true

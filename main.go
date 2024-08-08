@@ -24,7 +24,6 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	// https://github.com/go-telegram/bot/blob/main/examples/handler_match_func/main.go
 	opts := []bot.Option{
 		bot.WithSkipGetMe(),
 		bot.WithMiddlewares(securityMiddleware),
