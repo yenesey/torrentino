@@ -1,8 +1,8 @@
 package downloads
 
 import (
+	"context"
 	"fmt"
-
 	"os"
 	"path"
 	"path/filepath"
@@ -10,20 +10,17 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/gensword/collections"
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
+	"github.com/hekmon/transmissionrpc/v2"
+	"github.com/pkg/errors"
+
 	"torrentino/api/transmission"
 	"torrentino/common"
 	"torrentino/common/paginator"
 	"torrentino/common/utils"
-
-	"github.com/hekmon/transmissionrpc/v2"
-	"github.com/pkg/errors"
-
-	"github.com/gensword/collections"
-
-	"context"
-
-	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
 )
 
 var ExtIcons map[string]string = map[string]string{
@@ -227,8 +224,9 @@ func (p *ListPaginator) Reload() {
 			extCounter.Add(filepath.Ext((*file).Name))
 		}
 		if extCounter.Len() > 0 {
-			listItems[i].Ext = strings.ToLower(extCounter.MostCommon(1)[0].Key.(string))
-			listItems[i].ExtCount = extCounter.MostCommon(1)[0].Value
+			mostCommon := extCounter.MostCommon(1)[0]
+			listItems[i].Ext = strings.ToLower(mostCommon.Key.(string))
+			listItems[i].ExtCount = mostCommon.Value
 		}
 		listItems[i].IsDir = listItems[i].ExtCount > 1
 		listItems[i].Status = (*torrents)[i].Status.String()
@@ -262,9 +260,10 @@ func (p *ListPaginator) Reload() {
 						utils.LogError(err)
 					}
 				}
-				if len(extCounter.MostCommon(1)) > 0 {
-					ext = strings.ToLower(extCounter.MostCommon(1)[0].Key.(string))
-					extCount = extCounter.MostCommon(1)[0].Value
+				if extCounter.Len() > 0 {
+					mostCommon := extCounter.MostCommon(1)[0]
+					ext = strings.ToLower(mostCommon.Key.(string))
+					extCount = mostCommon.Value
 				}
 
 				listItems = append(listItems,

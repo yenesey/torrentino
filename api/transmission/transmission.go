@@ -3,9 +3,10 @@ package transmission
 import (
 	"context"
 	"log"
-	"torrentino/common"
 
 	"github.com/hekmon/transmissionrpc/v2"
+
+	"torrentino/common"
 )
 
 var Transmission *transmissionrpc.Client
@@ -34,7 +35,7 @@ func Pause(torrentId int64) (err error) {
 
 func List() (torrents *[]transmissionrpc.Torrent, err error) {
 	t, err := Transmission.TorrentGetAll(context.TODO())
-	return &t, err 
+	return &t, err
 }
 
 func init() {

@@ -4,14 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
 	"net/http"
-	// "net/http/cookiejar"
-	// "net/url"
 	"strconv"
-	// "time"
 	"strings"
-	// "github.com/pkg/errors"
+
 	"torrentino/common"
 )
 

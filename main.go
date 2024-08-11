@@ -5,14 +5,12 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"slices"
 
 	"torrentino/common"
-
 	"torrentino/handlers/downloads"
-	"torrentino/handlers/torrent_find"
+	"torrentino/handlers/search"
 	"torrentino/handlers/torrserver"
-
-	"slices"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -27,7 +25,7 @@ func main() {
 	opts := []bot.Option{
 		bot.WithSkipGetMe(),
 		bot.WithMiddlewares(securityMiddleware),
-		bot.WithDefaultHandler(torrent_find.Handler),
+		bot.WithDefaultHandler(search.Handler),
 		bot.WithMessageTextHandler("/downloads", bot.MatchTypeExact, downloads.Handler),
 		bot.WithMessageTextHandler("/torrserver", bot.MatchTypeExact, torrserver.Handler),
 	}

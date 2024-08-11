@@ -2,18 +2,19 @@ package jackett
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
-	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
-	"torrentino/common"
 
 	"github.com/pkg/errors"
+
+	"torrentino/common"
 )
 
 type jackettTime struct {

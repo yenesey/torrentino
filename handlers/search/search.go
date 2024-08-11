@@ -1,16 +1,10 @@
-package torrent_find
+package search
 
 import (
 	"context"
 	"fmt"
 	"net/http"
 	"strconv"
-	"torrentino/api/jackett"
-	"torrentino/api/torrserver"
-	"torrentino/api/transmission"
-	"torrentino/common"
-	"torrentino/common/paginator"
-	"torrentino/common/utils"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/go-telegram/bot"
@@ -19,6 +13,13 @@ import (
 	gotorrentparser "github.com/j-muller/go-torrent-parser"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
+
+	"torrentino/api/jackett"
+	"torrentino/api/torrserver"
+	"torrentino/api/transmission"
+	"torrentino/common"
+	"torrentino/common/paginator"
+	"torrentino/common/utils"
 )
 
 type ListItem struct {

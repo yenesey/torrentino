@@ -3,16 +3,15 @@ package paginator
 import (
 	"context"
 	"slices"
-
 	"reflect"
 	"strconv"
 	"strings"
 	"unicode"
 
-	"torrentino/common/utils"
-
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+
+	"torrentino/common/utils"
 )
 
 const (
