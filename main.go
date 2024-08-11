@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"slices"
 	"log"
 	"os"
 	"os/signal"
-	"slices"
 
 	"torrentino/common"
 	"torrentino/handlers/downloads"
@@ -24,7 +24,17 @@ func main() {
 
 	opts := []bot.Option{
 		bot.WithSkipGetMe(),
-		bot.WithMiddlewares(securityMiddleware),
+		bot.WithMiddlewares( func(next bot.HandlerFunc) bot.HandlerFunc {
+			return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+				if (update != nil) && (update.Message != nil) {
+					if slices.Index(common.Settings.Users_list, update.Message.From.ID) == -1 {
+						log.Printf("%d (%s) say: %s", update.Message.From.ID, update.Message.From.Username, update.Message.Text)
+						return
+					}
+				}
+				next(ctx, b, update)
+			}
+		}),
 		bot.WithDefaultHandler(search.Handler),
 		bot.WithMessageTextHandler("/downloads", bot.MatchTypeExact, downloads.Handler),
 		bot.WithMessageTextHandler("/torrserver", bot.MatchTypeExact, torrserver.Handler),
@@ -43,16 +53,4 @@ func main() {
 	})
 
 	b.Start(ctx)
-}
-
-func securityMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		if (update != nil) && (update.Message != nil) {
-			if slices.Index(common.Settings.Users_list, update.Message.From.ID) == -1 {
-				log.Printf("%d (%s) say: %s", update.Message.From.ID, update.Message.From.Username, update.Message.Text)
-				return
-			}
-		}
-		next(ctx, b, update)
-	}
 }
