@@ -9,7 +9,6 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/hekmon/transmissionrpc/v2"
 	gotorrentparser "github.com/j-muller/go-torrent-parser"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
@@ -30,19 +29,10 @@ type ListItem struct {
 
 type FindPaginator struct {
 	paginator.Paginator
-	query string
+	query              string
+	transmissionHashes map[string]bool
+	torrserverHashes   map[string]bool
 }
-
-var transmissionHashes map[string]bool
-var torrserverHashes map[string]bool
-
-/*
-var client = &http.Client{
-	CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	},
-}
-*/
 
 // ----------------------------------------
 func NewPaginator(query string) *FindPaginator {
@@ -50,6 +40,8 @@ func NewPaginator(query string) *FindPaginator {
 	fp = FindPaginator{
 		*paginator.New(&fp, "find", 4),
 		query,
+		make(map[string]bool),
+		make(map[string]bool),
 	}
 	return &fp
 }
@@ -72,7 +64,13 @@ func (p *FindPaginator) ItemString(item any) string {
 			})() +
 			(func() string {
 				if data.Link != "" {
-					return " [L:]"
+					return " 📎"
+				}
+				return ""
+			})() +
+			(func() string {
+				if data.MagnetUri != "" {
+					return " 🧲"
 				}
 				return ""
 			})()
@@ -118,8 +116,7 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 func (p *FindPaginator) ItemActions(item_ any) (result []string) {
 
 	item := item_.(*ListItem)
-	if item.InfoHash == "" {
-
+	if item.InfoHash == "" && item.Link != "" {
 		res, err := http.Get(item.Link)
 		if err != nil {
 			utils.LogError(errors.Wrap(err, "ItemActions: http.Get"))
@@ -130,22 +127,13 @@ func (p *FindPaginator) ItemActions(item_ any) (result []string) {
 			}
 			item.InfoHash = torrent.InfoHash
 		}
-		/*
-			res, err := client.Get(item.Link)
-			if res.StatusCode == 302 && res.Header.Get("Location") != "" {
-				m, err := metainfo.ParseMagnetUri(res.Header.Get("Location"))
-				if err == nil {
-					item.InfoHash = m.InfoHash.String()
-				}
-			} else {
-			}
-		*/
-		if transmissionHashes[item.InfoHash] {
-			item.InTorrents = true
-		}
-		if torrserverHashes[item.InfoHash] {
-			item.InTorrserver = true
-		}
+	}
+
+	if p.transmissionHashes[item.InfoHash] {
+		item.InTorrents = true
+	}
+	if p.torrserverHashes[item.InfoHash] {
+		item.InTorrserver = true
 	}
 
 	if !item.InTorrents {
@@ -216,45 +204,37 @@ func (p *FindPaginator) ItemActionExec(item_ any, actionKey string) (unselectIte
 	return true
 }
 
-func mapIt[T any](listFunc func() (*[]T, error), attrValueFunc func(*T) string) (result map[string]bool) {
-	result = make(map[string]bool)
-	list, err := listFunc()
-	if err != nil {
-		utils.LogError(errors.Wrap(err, "mapIt"))
-		return
-	}
-	for i := range *list {
-		result[attrValueFunc(&(*list)[i])] = true
-	}
-	return
-}
-
 // method overload
 func (p *FindPaginator) Reload() {
 
 	result, err := jackett.Query(p.query, common.Settings.Jackett.Indexers)
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "Reload: jackett.Query"))
+		utils.LogError(errors.Wrap(err, "Reload: jackett.Query()"))
 		return
 	}
 
-	transmissionHashes = mapIt[transmissionrpc.Torrent](
-		transmission.List,
-		func(el *transmissionrpc.Torrent) string {
-			return *el.HashString
-		},
-	)
-	torrserverHashes = mapIt[torrserver.TSListItem](
-		torrserver.List,
-		func(el *torrserver.TSListItem) string {
-			return el.Hash
-		},
-	)
+	trList, err := transmission.List()
+	if err != nil {
+		utils.LogError(errors.Wrap(err, "Reload: transmission.List()"))
+	} else {
+		for _, el := range *trList {
+			p.transmissionHashes[*el.HashString] = true
+		}
+	}
+
+	tsList, err := torrserver.List()
+	if err != nil {
+		utils.LogError(errors.Wrap(err, "Reload: torrserver.List()"))
+	} else {
+		for _, el := range *tsList {
+			p.torrserverHashes[el.Hash] = true
+		}
+	}
 
 	p.Alloc(len(*result))
 	for i := range *result {
 		hash := (*result)[i].InfoHash
-		p.Append(&ListItem{(*result)[i], transmissionHashes[hash], torrserverHashes[hash]})
+		p.Append(&ListItem{(*result)[i], p.transmissionHashes[hash], p.torrserverHashes[hash]})
 	}
 	p.Paginator.Reload()
 }
@@ -304,7 +284,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		{Name: "Size", ShortName: "size", Order: 1},
 		{Name: "Seeders", ShortName: "seeds", Order: 1},
 		{Name: "Peers", ShortName: "peers", Order: 0},
-		{Name: "Link", ShortName: "link", Order: 0},
+		{Name: "Link", ShortName: "file", Order: 0},
 	})
 	p.Filtering.Setup([]string{"TrackerId"})
 	p.Reload()
