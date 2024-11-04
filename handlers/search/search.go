@@ -53,15 +53,7 @@ func (p *FindPaginator) ItemString(item any) string {
 		return data.Title +
 			" [" + utils.FormatFileSize(uint64(data.Size)) + "] [" + data.TrackerId + "]" +
 			" [" + strconv.Itoa(int(data.Seeders)) + "s/" + strconv.Itoa(int(data.Peers)) + "p]" +
-			(func() (result string) {
-				if data.InTorrents {
-					result += " [->downloads]"
-				}
-				if data.InTorrserver {
-					result += " [->torrserver]"
-				}
-				return
-			})() +
+
 			(func() string {
 				if data.Link != "" {
 					return " 📎"
@@ -73,8 +65,16 @@ func (p *FindPaginator) ItemString(item any) string {
 					return " 🧲"
 				}
 				return ""
+			})() +
+			(func() (result string) {
+				if data.InTorrents {
+					result += " 📥"
+				}
+				if data.InTorrserver {
+					result += " 🎦"
+				}
+				return
 			})()
-
 	} else {
 		utils.LogError(fmt.Errorf("ItemString: type assertion error"))
 	}
@@ -113,9 +113,9 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *FindPaginator) ItemActions(item_ any) (result []string) {
+func (p *FindPaginator) ItemActions(i int) (result []string) {
 
-	item := item_.(*ListItem)
+	item := p.Item(i).(*ListItem)
 	if item.InfoHash == "" && item.Link != "" {
 		res, err := http.Get(item.Link)
 		if err != nil {
@@ -152,9 +152,9 @@ func (p *FindPaginator) ItemActions(item_ any) (result []string) {
 }
 
 // method overload
-func (p *FindPaginator) ItemActionExec(item_ any, actionKey string) (unselectItem bool) {
+func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bool) {
 
-	item := item_.(*ListItem)
+	item := p.Item(i).(*ListItem)
 
 	var urlOrMagnet string
 	if item.Link != "" {

@@ -39,14 +39,14 @@ func (p *TorrserverList) ItemString(item_ any) string {
 }
 
 // method overload
-func (p *TorrserverList) ItemActions(item any) (result []string) {
+func (p *TorrserverList) ItemActions(i int) (result []string) {
 	result = []string{"delete"}
 	return
 }
 
 // method overload
-func (p *TorrserverList) ItemActionExec(item_ any, actionKey string) bool {
-	item := item_.(torrserver.TSListItem)
+func (p *TorrserverList) ItemActionExec(i int, actionKey string) bool {
+	item := p.Item(i).(torrserver.TSListItem)
 	if actionKey == "delete" {
 		if err := torrserver.Delete(item.Hash); err == nil {
 			p.Reload()

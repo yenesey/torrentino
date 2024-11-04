@@ -32,8 +32,8 @@ type VirtualMethods interface {
 	FooterString() string
 	ItemString(item any) string
 	AttributeByName(item any, attributeName string) string
-	ItemActions(item any) []string
-	ItemActionExec(item any, actionKey string) (unselectItem bool)
+	ItemActions(i int) []string
+	ItemActionExec(i int, actionKey string) (unselectItem bool)
 	LessItem(i int, j int, attributeName string) bool
 	Reload()
 }
@@ -127,11 +127,11 @@ func (p *Paginator) LessItem(i int, j int, attributeName string) bool {
 	return false
 }
 
-func (p *Paginator) ItemActions(item any) []string {
+func (p *Paginator) ItemActions(i int) []string {
 	return nil
 }
 
-func (p *Paginator) ItemActionExec(item any, actionKey string) (unselectItem bool) {
+func (p *Paginator) ItemActionExec(i int, actionKey string) (unselectItem bool) {
 	return true
 }
 
@@ -250,7 +250,7 @@ func (p *Paginator) buildKeyboard() {
 	kbd = append(kbd, row)
 
 	if !p.extControlsVisible && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
-		p.actions = p.virtual.ItemActions(p.Item(p.selectedItem))
+		p.actions = p.virtual.ItemActions(p.selectedItem)
 		row = []models.InlineKeyboardButton{}
 		for i, action := range p.actions {
 			row = append(row, models.InlineKeyboardButton{
@@ -378,7 +378,7 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			if p.selectedItem != -1 {
 				for i := range p.actions {
 					if p.actions[i] == payload {
-						if p.virtual.ItemActionExec(p.Item(p.selectedItem), payload) {
+						if p.virtual.ItemActionExec(p.selectedItem, payload) {
 							p.selectedItem = -1
 						}
 					}

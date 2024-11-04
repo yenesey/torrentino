@@ -158,8 +158,8 @@ func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *ListPaginator) ItemActions(item_ any) (result []string) {
-	item := item_.(ListItem)
+func (p *ListPaginator) ItemActions(i int) (result []string) {
+	item := p.Item(i).(ListItem)
 
 	switch item.Status {
 	case "downloading", "seeding":
@@ -174,9 +174,9 @@ func (p *ListPaginator) ItemActions(item_ any) (result []string) {
 }
 
 // method overload
-func (p *ListPaginator) ItemActionExec(item_ any, actionKey string) (unSelectItem bool) {
+func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bool) {
 	var err error
-	item := item_.(ListItem)
+	item := p.Item(i).(ListItem)
 	switch actionKey {
 	case "delete":
 		if item.ID != nil {
@@ -188,19 +188,15 @@ func (p *ListPaginator) ItemActionExec(item_ any, actionKey string) (unSelectIte
 				err = os.Remove(common.Settings.Download_dir + "/" + *item.Name)
 			}
 		}
-		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
-		}
+		p.Delete(i)
 	case "start":
 		err = transmission.Start(*item.ID)
-		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
-		}
 	case "pause":
 		err = transmission.Pause(*item.ID)
-		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
-		}
+	}
+
+	if err != nil {
+		utils.LogError(errors.Wrap(err, "ItemActionExec"))
 	}
 	return true
 }
