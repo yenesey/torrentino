@@ -1,7 +1,7 @@
 package paginator
 
 import (
-	"torrentino/common/utils"
+	// "torrentino/common/utils"
 	"slices"
 )
 
@@ -71,8 +71,11 @@ func (f *FilteringState) ClassifyItems() {
 // -------------------------------------------------------------
 
 func (p *Paginator) Filter() {
-	defer utils.TimeTrack(utils.Now(), "Filtering")
+	// defer utils.TimeTrack(utils.Now(), "Filtering")
 	index := make([]int, 0, len(p.index))
+	for i := range p.index {
+		p.index[i] = i
+	}
 	for i := range p.list {
 		anyFilter := false
 		keepItem := false
