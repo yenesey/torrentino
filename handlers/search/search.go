@@ -2,7 +2,6 @@ package search
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -46,44 +45,43 @@ func NewPaginator(query string) *FindPaginator {
 	return &fp
 }
 
+func (p *FindPaginator) GetListItem(i int) (*ListItem) {
+	return p.Item(i).(*ListItem)
+}
+
 // method overload
 func (p *FindPaginator) ItemString(i int) string {
 
-	if data, ok := p.Item(i).(*ListItem); ok {
-		return data.Title +
-			" [" + utils.FormatFileSize(uint64(data.Size)) + "] [" + data.TrackerId + "]" +
-			" [" + strconv.Itoa(int(data.Seeders)) + "s/" + strconv.Itoa(int(data.Peers)) + "p]" +
-
-			(func() string {
-				if data.Link != "" {
-					return " 📎"
-				}
-				return ""
-			})() +
-			(func() string {
-				if data.MagnetUri != "" {
-					return " 🧲"
-				}
-				return ""
-			})() +
-			(func() (result string) {
-				if data.InTorrents {
-					result += " 📥"
-				}
-				if data.InTorrserver {
-					result += " 🎦"
-				}
-				return
-			})()
-	} else {
-		utils.LogError(fmt.Errorf("ItemString: type assertion error"))
-	}
-	return ""
+	item := p.GetListItem(i)
+	return item.Title +
+		" [" + utils.FormatFileSize(uint64(item.Size)) + "] [" + item.TrackerId + "]" +
+		" [" + strconv.Itoa(int(item.Seeders)) + "s/" + strconv.Itoa(int(item.Peers)) + "p]" +
+		(func() string {
+			if item.Link != "" {
+				return " 📎"
+			}
+			return ""
+		})() +
+		(func() string {
+			if item.MagnetUri != "" {
+				return " 🧲"
+			}
+			return ""
+		})() +
+		(func() (result string) {
+			if item.InTorrents {
+				result += " 📥"
+			}
+			if item.InTorrserver {
+				result += " 🎦"
+			}
+			return
+		})()
 }
 
 // method overload
 func (p *FindPaginator) AttributeByName(i int, attributeName string) string {
-	item := p.Item(i).(*ListItem)
+	item := p.GetListItem(i)
 	if attributeName == "TrackerId" {
 		return item.TrackerId
 	} else if attributeName == "TrackerType" {
@@ -94,8 +92,8 @@ func (p *FindPaginator) AttributeByName(i int, attributeName string) string {
 
 // method overload
 func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
-	a := p.Item(i).(*ListItem)
-	b := p.Item(j).(*ListItem)
+	a := p.GetListItem(i)
+	b := p.GetListItem(j)
 	switch attributeKey {
 	case "Size":
 		return a.Size < b.Size
@@ -115,7 +113,7 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 // method overload
 func (p *FindPaginator) ItemActions(i int) (result []string) {
 
-	item := p.Item(i).(*ListItem)
+	item := p.GetListItem(i)
 	if item.InfoHash == "" && item.Link != "" {
 		res, err := http.Get(item.Link)
 		if err != nil {
@@ -154,7 +152,7 @@ func (p *FindPaginator) ItemActions(i int) (result []string) {
 // method overload
 func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bool) {
 
-	item := p.Item(i).(*ListItem)
+	item := p.GetListItem(i)
 
 	var urlOrMagnet string
 	if item.Link != "" {

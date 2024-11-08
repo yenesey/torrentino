@@ -60,7 +60,6 @@ func NewPaginator() *ListPaginator {
 	return &p
 }
 
-// method overload
 func (p *ListPaginator) GetListItem(i int) (*ListItem) {
 	return p.Item(i).(*ListItem)
 }
@@ -68,41 +67,40 @@ func (p *ListPaginator) GetListItem(i int) (*ListItem) {
 // method overload
 func (p *ListPaginator) ItemString(i int) string {
 	result := ""
-	data := p.GetListItem(i)
-		if data.IsDir {
-			result = "📁[" + strconv.Itoa(data.ExtCount) + "x | " + data.Ext + "]"
-		}
-		var peersGettingFromUs int64
-		var peersSendingToUs int64
-		var uploadRatio float64
-		if data.PeersSendingToUs == nil {
-			data.PeersSendingToUs = &peersSendingToUs
-		}
+	item := p.GetListItem(i)
+	if item.IsDir {
+		result = "📁[" + strconv.Itoa(item.ExtCount) + "x | " + item.Ext + "]"
+	}
+	var peersGettingFromUs int64
+	var peersSendingToUs int64
+	var uploadRatio float64
+	if item.PeersSendingToUs == nil {
+		item.PeersSendingToUs = &peersSendingToUs
+	}
 
-		if data.PeersGettingFromUs == nil {
-			data.PeersConnected = &peersGettingFromUs
-		}
+	if item.PeersGettingFromUs == nil {
+		item.PeersConnected = &peersGettingFromUs
+	}
 
-		if data.UploadRatio == nil || *data.UploadRatio < 0 {
-			data.UploadRatio = &uploadRatio
-		}
+	if item.UploadRatio == nil || *item.UploadRatio < 0 {
+		item.UploadRatio = &uploadRatio
+	}
 
-		result = result +
-			ExtIcons[data.Ext] +
-			"" + *data.Name +
-			" [" + utils.FormatFileSize(uint64(*data.DownloadedEver)) + "]" +
-			" [" + fmt.Sprintf("%.0f", *data.PercentDone*100) + "%]" +
-			" [" + fmt.Sprintf("%.2f", *data.UploadRatio) + "x]" +
-			(func() string {
-				switch data.Status {
-				case "seeding":
-					return " [" + data.Status + ":" + fmt.Sprintf("%dp", *data.PeersGettingFromUs) + "]"
-				case "downloading":
-					return " [" + data.Status + ":" + fmt.Sprintf("%dp", *data.PeersSendingToUs) + "]"
-				}
-				return " [" + data.Status + "]"
-
-			})()
+	result = result +
+		ExtIcons[item.Ext] +
+		"" + *item.Name +
+		" [" + utils.FormatFileSize(uint64(*item.DownloadedEver)) + "]" +
+		" [" + fmt.Sprintf("%.0f", *item.PercentDone*100) + "%]" +
+		" [" + fmt.Sprintf("%.2f", *item.UploadRatio) + "x]" +
+		(func() string {
+			switch item.Status {
+			case "seeding":
+				return " [" + item.Status + ":" + fmt.Sprintf("%dp", *item.PeersGettingFromUs) + "]"
+			case "downloading":
+				return " [" + item.Status + ":" + fmt.Sprintf("%dp", *item.PeersSendingToUs) + "]"
+			}
+			return " [" + item.Status + "]"
+		})()
 
 	return result
 }
