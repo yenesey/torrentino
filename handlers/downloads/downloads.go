@@ -60,14 +60,14 @@ func NewPaginator() *ListPaginator {
 	return &p
 }
 
-func (p *ListPaginator) GetListItem(i int) (*ListItem) {
-	return p.Item(i).(*ListItem)
+func (p *ListPaginator) Item(i int) *ListItem {
+	return p.Paginator.Item(i).(*ListItem)
 }
 
 // method overload
 func (p *ListPaginator) ItemString(i int) string {
 	result := ""
-	item := p.GetListItem(i)
+	item := p.Item(i)
 	if item.IsDir {
 		result = "📁[" + strconv.Itoa(item.ExtCount) + "x | " + item.Ext + "]"
 	}
@@ -120,7 +120,7 @@ func (p *ListPaginator) FooterString() string {
 	var downloaded uint64
 	var uploaded uint64
 	for i := 0; i < p.Len(); i++ {
-		item := p.GetListItem(i)
+		item := p.Item(i)
 		downloaded += uint64(*item.DownloadedEver)
 		uploaded += uint64(*item.UploadRatio * float64(*item.DownloadedEver))
 	}
@@ -135,15 +135,15 @@ func (p *ListPaginator) FooterString() string {
 // method overload
 func (p *ListPaginator) AttributeByName(i int, attributeName string) string {
 	if attributeName == "Status" {
-		return p.GetListItem(i).Status
+		return p.Item(i).Status
 	}
 	return ""
 }
 
 // method overload
 func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
-	a := p.GetListItem(i)
-	b := p.GetListItem(j)
+	a := p.Item(i)
+	b := p.Item(j)
 
 	switch attributeKey {
 	case "AddedDate":
@@ -160,7 +160,7 @@ func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
 
 // method overload
 func (p *ListPaginator) ItemActions(i int) (result []string) {
-	item := p.GetListItem(i)
+	item := p.Item(i)
 
 	switch item.Status {
 	case "downloading", "seeding":
@@ -177,7 +177,7 @@ func (p *ListPaginator) ItemActions(i int) (result []string) {
 // method overload
 func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bool) {
 	var err error
-	item := p.GetListItem(i)
+	item := p.Item(i)
 	switch actionKey {
 	case "delete":
 		if item.ID != nil {

@@ -45,14 +45,14 @@ func NewPaginator(query string) *FindPaginator {
 	return &fp
 }
 
-func (p *FindPaginator) GetListItem(i int) (*ListItem) {
-	return p.Item(i).(*ListItem)
+func (p *FindPaginator) Item(i int) *ListItem {
+	return p.Paginator.Item(i).(*ListItem)
 }
 
 // method overload
 func (p *FindPaginator) ItemString(i int) string {
 
-	item := p.GetListItem(i)
+	item := p.Item(i)
 	return item.Title +
 		" [" + utils.FormatFileSize(uint64(item.Size)) + "] [" + item.TrackerId + "]" +
 		" [" + strconv.Itoa(int(item.Seeders)) + "s/" + strconv.Itoa(int(item.Peers)) + "p]" +
@@ -81,7 +81,7 @@ func (p *FindPaginator) ItemString(i int) string {
 
 // method overload
 func (p *FindPaginator) AttributeByName(i int, attributeName string) string {
-	item := p.GetListItem(i)
+	item := p.Item(i)
 	if attributeName == "TrackerId" {
 		return item.TrackerId
 	} else if attributeName == "TrackerType" {
@@ -92,8 +92,8 @@ func (p *FindPaginator) AttributeByName(i int, attributeName string) string {
 
 // method overload
 func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
-	a := p.GetListItem(i)
-	b := p.GetListItem(j)
+	a := p.Item(i)
+	b := p.Item(j)
 	switch attributeKey {
 	case "Size":
 		return a.Size < b.Size
@@ -113,7 +113,7 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 // method overload
 func (p *FindPaginator) ItemActions(i int) (result []string) {
 
-	item := p.GetListItem(i)
+	item := p.Item(i)
 	if item.InfoHash == "" && item.Link != "" {
 		res, err := http.Get(item.Link)
 		if err != nil {
@@ -152,7 +152,7 @@ func (p *FindPaginator) ItemActions(i int) (result []string) {
 // method overload
 func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bool) {
 
-	item := p.GetListItem(i)
+	item := p.Item(i)
 
 	var urlOrMagnet string
 	if item.Link != "" {
