@@ -1,6 +1,7 @@
 package paginator
 
 import (
+	// "torrentino/common/utils"
 	"slices"
 )
 
@@ -49,7 +50,7 @@ func (f *FilteringState) ClassifyItems() {
 		valuesNew := make(map[string]void) // count attributes currently present
 		for i := range f.pg.list {
 			// fieldValue := reflect.Indirect(reflect.ValueOf(f.pg.list[j])).FieldByName(f.attributes[j].Name).String()
-			fieldValue := f.pg.virtual.AttributeByName(f.pg.list[i], f.attributes[j].Name)
+			fieldValue := f.pg.virtual.AttributeByName(i, f.attributes[j].Name)
 			if _, ok := f.attributes[j].valuesMap[fieldValue]; !ok {
 				f.attributes[j].Values = append(f.attributes[j].Values, FilteringHeader{Value: fieldValue, Enabled: false})
 				f.attributes[j].valuesMap[fieldValue] = void{}
@@ -71,7 +72,10 @@ func (f *FilteringState) ClassifyItems() {
 
 func (p *Paginator) Filter() {
 	// defer utils.TimeTrack(utils.Now(), "Filtering")
-	p.index = p.index[:0] //p.index = make([]int, 0, len(p.list))
+	index := make([]int, 0, len(p.index))
+	for i := range p.index {
+		p.index[i] = i
+	}
 	for i := range p.list {
 		anyFilter := false
 		keepItem := false
@@ -79,14 +83,16 @@ func (p *Paginator) Filter() {
 			for k := range p.Filtering.attributes[j].Values {
 				if p.Filtering.attributes[j].Values[k].Enabled {
 					anyFilter = true
-					if p.virtual.AttributeByName(p.list[i], p.Filtering.attributes[j].Name) == p.Filtering.attributes[j].Values[k].Value {
+					if p.virtual.AttributeByName(i, p.Filtering.attributes[j].Name) == p.Filtering.attributes[j].Values[k].Value {
 						keepItem = true
 					}
 				}
 			}
 		}
 		if !anyFilter || (anyFilter && keepItem) {
-			p.index = append(p.index, i)
+			index = append(index, i)
 		}
 	}
+	p.index = p.index[:0] //p.index = make([]int, 0, len(p.list))
+	p.index = append(p.index, index...)
 }

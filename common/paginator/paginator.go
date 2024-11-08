@@ -30,10 +30,10 @@ var callbackHandler map[string]string = make(map[string]string)
 type VirtualMethods interface {
 	HeaderString() string
 	FooterString() string
-	ItemString(item any) string
-	AttributeByName(item any, attributeName string) string
-	ItemActions(item any) []string
-	ItemActionExec(item any, actionKey string) (unselectItem bool)
+	ItemString(i int) string
+	AttributeByName(i int, attributeName string) string
+	ItemActions(i int) []string
+	ItemActionExec(i int, actionKey string) (unselectItem bool)
 	LessItem(i int, j int, attributeName string) bool
 	Reload()
 }
@@ -90,10 +90,6 @@ func (p *Paginator) Delete(i int) {
 	p.Filter()                                 // <-- just for rebuild the indexes
 }
 
-func (p *Paginator) Item(i int) any {
-	return p.list[p.index[i]]
-}
-
 func (p *Paginator) pageBounds() (int, int) {
 	var maxItems int = p.Len()
 	var fromIndex = p.activePage * p.itemsPerPage
@@ -104,14 +100,17 @@ func (p *Paginator) pageBounds() (int, int) {
 	return fromIndex, toIndex
 }
 
-// ----------part of VirtualMethods interface----------------
+func (p *Paginator) Item(i int) any {
+	return p.list[p.index[i]]
+}
 
+// ----------part of VirtualMethods interface----------------
 func (p *Paginator) HeaderString() string {
 	var fromIndex, toIndex = p.pageBounds()
 	return "<b>results: " + strconv.Itoa(fromIndex+1) + "-" + strconv.Itoa(toIndex) + " of " + strconv.Itoa(p.Len()) + "</b>"
 }
 
-func (p *Paginator) ItemString(item any) string {
+func (p *Paginator) ItemString(item int) string {
 	return ""
 }
 
@@ -119,7 +118,7 @@ func (p *Paginator) FooterString() string {
 	return ""
 }
 
-func (p *Paginator) AttributeByName(item any, attributeName string) string {
+func (p *Paginator) AttributeByName(i int, attributeName string) string {
 	return ""
 }
 
@@ -127,11 +126,11 @@ func (p *Paginator) LessItem(i int, j int, attributeName string) bool {
 	return false
 }
 
-func (p *Paginator) ItemActions(item any) []string {
+func (p *Paginator) ItemActions(i int) []string {
 	return nil
 }
 
-func (p *Paginator) ItemActionExec(item any, actionKey string) (unselectItem bool) {
+func (p *Paginator) ItemActionExec(i int, actionKey string) (unselectItem bool) {
 	return true
 }
 
@@ -155,9 +154,9 @@ func (p *Paginator) buildText() {
 		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " +
 			(func() string {
 				if p.selectedItem == i {
-					return "<u>" + p.virtual.ItemString(p.Item(i)) + "</u>"
+					return "<u>" + p.virtual.ItemString(i) + "</u>"
 				} else {
-					return p.virtual.ItemString(p.Item(i))
+					return p.virtual.ItemString(i)
 				}
 			})()
 		if i < toIndex-1 {
@@ -250,7 +249,7 @@ func (p *Paginator) buildKeyboard() {
 	kbd = append(kbd, row)
 
 	if !p.extControlsVisible && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
-		p.actions = p.virtual.ItemActions(p.Item(p.selectedItem))
+		p.actions = p.virtual.ItemActions(p.selectedItem)
 		row = []models.InlineKeyboardButton{}
 		for i, action := range p.actions {
 			row = append(row, models.InlineKeyboardButton{
@@ -378,7 +377,7 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			if p.selectedItem != -1 {
 				for i := range p.actions {
 					if p.actions[i] == payload {
-						if p.virtual.ItemActionExec(p.Item(p.selectedItem), payload) {
+						if p.virtual.ItemActionExec(p.selectedItem, payload) {
 							p.selectedItem = -1
 						}
 					}
