@@ -47,9 +47,9 @@ func NewPaginator(query string) *FindPaginator {
 }
 
 // method overload
-func (p *FindPaginator) ItemString(item any) string {
+func (p *FindPaginator) ItemString(i int) string {
 
-	if data, ok := item.(*ListItem); ok {
+	if data, ok := p.Item(i).(*ListItem); ok {
 		return data.Title +
 			" [" + utils.FormatFileSize(uint64(data.Size)) + "] [" + data.TrackerId + "]" +
 			" [" + strconv.Itoa(int(data.Seeders)) + "s/" + strconv.Itoa(int(data.Peers)) + "p]" +
@@ -82,12 +82,12 @@ func (p *FindPaginator) ItemString(item any) string {
 }
 
 // method overload
-func (p *FindPaginator) AttributeByName(item any, attributeName string) string {
-	item_ := item.(*ListItem)
+func (p *FindPaginator) AttributeByName(i int, attributeName string) string {
+	item := p.Item(i).(*ListItem)
 	if attributeName == "TrackerId" {
-		return item_.TrackerId
+		return item.TrackerId
 	} else if attributeName == "TrackerType" {
-		return item_.TrackerType
+		return item.TrackerType
 	}
 	return ""
 }

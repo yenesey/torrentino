@@ -27,9 +27,9 @@ func NewPaginator() *TorrserverList {
 }
 
 // method overload
-func (p *TorrserverList) ItemString(item_ any) string {
+func (p *TorrserverList) ItemString(i int) string {
 
-	if item, ok := item_.(torrserver.TSListItem); ok {
+	if item, ok := p.Item(i).(torrserver.TSListItem); ok {
 		return item.Title +
 			" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
 	} else {

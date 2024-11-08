@@ -61,9 +61,14 @@ func NewPaginator() *ListPaginator {
 }
 
 // method overload
-func (p *ListPaginator) ItemString(item any) string {
+func (p *ListPaginator) GetListItem(i int) (*ListItem) {
+	return p.Item(i).(*ListItem)
+}
+
+// method overload
+func (p *ListPaginator) ItemString(i int) string {
 	result := ""
-	if data, ok := item.(ListItem); ok {
+	data := p.GetListItem(i)
 		if data.IsDir {
 			result = "📁[" + strconv.Itoa(data.ExtCount) + "x | " + data.Ext + "]"
 		}
@@ -99,9 +104,6 @@ func (p *ListPaginator) ItemString(item any) string {
 
 			})()
 
-	} else {
-		utils.LogError(fmt.Errorf("ItemString - type assertion error"))
-	}
 	return result
 }
 
@@ -120,7 +122,7 @@ func (p *ListPaginator) FooterString() string {
 	var downloaded uint64
 	var uploaded uint64
 	for i := 0; i < p.Len(); i++ {
-		item := p.Item(i).(ListItem)
+		item := p.GetListItem(i)
 		downloaded += uint64(*item.DownloadedEver)
 		uploaded += uint64(*item.UploadRatio * float64(*item.DownloadedEver))
 	}
@@ -133,17 +135,18 @@ func (p *ListPaginator) FooterString() string {
 }
 
 // method overload
-func (p *ListPaginator) AttributeByName(item any, attributeName string) string {
+func (p *ListPaginator) AttributeByName(i int, attributeName string) string {
 	if attributeName == "Status" {
-		return item.(ListItem).Status
+		return p.GetListItem(i).Status
 	}
 	return ""
 }
 
 // method overload
 func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
-	a := p.Item(i).(ListItem)
-	b := p.Item(j).(ListItem)
+	a := p.GetListItem(i)
+	b := p.GetListItem(j)
+
 	switch attributeKey {
 	case "AddedDate":
 		return (*a.AddedDate).Compare(*b.AddedDate) == -1
@@ -159,7 +162,7 @@ func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
 
 // method overload
 func (p *ListPaginator) ItemActions(i int) (result []string) {
-	item := p.Item(i).(ListItem)
+	item := p.GetListItem(i)
 
 	switch item.Status {
 	case "downloading", "seeding":
@@ -176,7 +179,7 @@ func (p *ListPaginator) ItemActions(i int) (result []string) {
 // method overload
 func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bool) {
 	var err error
-	item := p.Item(i).(ListItem)
+	item := p.GetListItem(i)
 	switch actionKey {
 	case "delete":
 		if item.ID != nil {
@@ -283,7 +286,7 @@ func (p *ListPaginator) Reload() {
 
 	p.Alloc(len(listItems))
 	for i := range listItems {
-		p.Append(listItems[i])
+		p.Append(&listItems[i])
 	}
 	p.Paginator.Reload()
 }
@@ -307,7 +310,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		gDone <- true
 	}
 	gFirstFun = false
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 10)
 	go func() {
 		for {
 			select {
