@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/pkg/errors"
 
 	"torrentino/common/utils"
 )
@@ -46,22 +47,18 @@ type Paginator struct {
 	Sorting   SortingState
 	Filtering FilteringState
 
-	actions            []string
+	Ctx         context.Context
+	Bot        *bot.Bot
+	Message    *models.Message
+
 	extControlsVisible bool
 	activePage         int
 	itemsPerPage       int
 	selectedItem       int
 
-	Bot    *bot.Bot
-	ChatID any
-	Ctx    context.Context
-
 	prefix      string
-	message     *models.Message
 	text        string
-	kbd         models.InlineKeyboardMarkup
-	textChanged bool
-	kbdChanged  bool
+	keyboard    models.InlineKeyboardMarkup
 }
 
 func New(virtualMethods VirtualMethods, prefix string, itemsPerPage int) *Paginator {
@@ -90,6 +87,34 @@ func (p *Paginator) Delete(i int) {
 	p.Filter()                                 // <-- just for rebuild the indexes
 }
 
+func (p *Paginator) Item(i int) any {
+	return p.list[p.index[i]]
+}
+
+func (p *Paginator) ReplyMessage(text string) {
+	_, err := p.Bot.SendMessage(p.Ctx, &bot.SendMessageParams{
+		ChatID:      p.Message.Chat.ID,
+		Text:        text,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: nil,
+	})
+	if err != nil {
+		utils.LogError(errors.Wrap(err, "ReplyMessage"))
+	}
+}
+
+func (p *Paginator) ReplyDocument(doc *models.InputFileUpload) {
+	_, err := p.Bot.SendDocument(p.Ctx, &bot.SendDocumentParams{
+		ChatID:      p.Message.Chat.ID,
+		Document:    doc,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: nil,
+	})
+	if err != nil {
+		utils.LogError(errors.Wrap(err, "ReplyDocument"))
+	}
+}
+
 func (p *Paginator) pageBounds() (int, int) {
 	var maxItems int = p.Len()
 	var fromIndex = p.activePage * p.itemsPerPage
@@ -98,10 +123,6 @@ func (p *Paginator) pageBounds() (int, int) {
 		toIndex = maxItems
 	}
 	return fromIndex, toIndex
-}
-
-func (p *Paginator) Item(i int) any {
-	return p.list[p.index[i]]
 }
 
 // ----------part of VirtualMethods interface----------------
@@ -142,7 +163,7 @@ func (p *Paginator) Reload() {
 }
 
 // ----------------------------------------
-func (p *Paginator) buildText() {
+func (p *Paginator) buildText() string {
 
 	var text string
 	hr := "\n<b>⸻⸻⸻⸻⸻</b>\n"
@@ -167,14 +188,10 @@ func (p *Paginator) buildText() {
 	if len(footer) > 0 {
 		text = text + hr + "<b>" + footer + "</b>"
 	}
-
-	p.textChanged = (text != p.text)
-	if p.textChanged {
-		p.text = text
-	}
+	return text
 }
 
-func (p *Paginator) buildKeyboard() {
+func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 	type buttonData struct {
 		Text string
@@ -193,7 +210,7 @@ func (p *Paginator) buildKeyboard() {
 		return models.InlineKeyboardButton{Text: bdata[i].Text, CallbackData: bdata[i].Data}
 	}
 
-	var kbd [][]models.InlineKeyboardButton
+	var keyboard [][]models.InlineKeyboardButton
 	var row []models.InlineKeyboardButton
 
 	var fromIndex, toIndex = p.pageBounds()
@@ -205,7 +222,7 @@ func (p *Paginator) buildKeyboard() {
 		row = append(row, models.InlineKeyboardButton{Text: btnCap, CallbackData: p.prefix + strconv.Itoa(i)})
 	}
 	if len(row) > 0 {
-		kbd = append(kbd, row)
+		keyboard = append(keyboard, row)
 	}
 
 	if p.extControlsVisible {
@@ -217,7 +234,7 @@ func (p *Paginator) buildKeyboard() {
 			})
 		}
 		if len(row) > 0 {
-			kbd = append(kbd, row)
+			keyboard = append(keyboard, row)
 		}
 
 		for _, attr := range p.Filtering.attributes {
@@ -228,12 +245,12 @@ func (p *Paginator) buildKeyboard() {
 					CallbackData: p.prefix + CB_FILTER_BY + attr.Name + "/" + val.Value,
 				})
 				if (j+1)%4 == 0 { // 4 buttons max
-					kbd = append(kbd, row)
+					keyboard = append(keyboard, row)
 					row = []models.InlineKeyboardButton{}
 				}
 			}
 			if len(row) > 0 {
-				kbd = append(kbd, row)
+				keyboard = append(keyboard, row)
 			}
 		}
 	}
@@ -246,33 +263,28 @@ func (p *Paginator) buildKeyboard() {
 		chooseButton(p.activePage < ((p.Len()-1)/p.itemsPerPage),
 			[2]buttonData{{"➡", p.prefix + CB_NEXT_PAGE}, {"-", p.prefix + CB_STUB}}),
 	}
-	kbd = append(kbd, row)
+	keyboard = append(keyboard, row)
 
 	if !p.extControlsVisible && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
-		p.actions = p.virtual.ItemActions(p.selectedItem)
 		row = []models.InlineKeyboardButton{}
-		for i, action := range p.actions {
+		for i, action := range p.virtual.ItemActions(p.selectedItem) {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         action,
 				CallbackData: p.prefix + CB_ACTION + action,
 			})
 			if (i+1)%2 == 0 {
-				kbd = append(kbd, row)
+				keyboard = append(keyboard, row)
 				row = []models.InlineKeyboardButton{}
 			}
 		}
 		if len(row) > 0 {
-			kbd = append(kbd, row)
+			keyboard = append(keyboard, row)
 		}
 	}
-
-	p.kbdChanged = !reflect.DeepEqual(kbd, p.kbd.InlineKeyboard)
-	if p.kbdChanged {
-		p.kbd.InlineKeyboard = kbd
-	}
+	return keyboard
 }
 
-func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) *models.Message {
+func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) {
 
 	if callbackHandlerID, ok := callbackHandler[p.prefix]; ok {
 		b.UnregisterHandler(callbackHandlerID)
@@ -281,51 +293,57 @@ func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) *models.Me
 
 	p.Ctx = ctx
 	p.Bot = b
-	p.ChatID = chatID
-
-	p.buildText()
-	p.buildKeyboard()
+	p.text = p.buildText()
+	p.keyboard.InlineKeyboard = p.buildKeyboard()
 
 	var err error
-	p.message, err = b.SendMessage(ctx, &bot.SendMessageParams{
+	p.Message, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      chatID,
 		Text:        p.text,
 		ParseMode:   models.ParseModeHTML,
-		ReplyMarkup: p.kbd,
+		ReplyMarkup: p.keyboard,
 	})
 	if err != nil {
-		utils.LogError(err)
+		utils.LogError(errors.Wrap(err, "Show"))
 	}
-	return p.message
 }
 
 func (p *Paginator) Refresh() {
-	p.buildKeyboard()
-	p.buildText()
-	if p.textChanged {
-		var _, err = p.Bot.EditMessageText(p.Ctx, &bot.EditMessageTextParams{
-			ChatID:    p.message.Chat.ID,
-			MessageID: p.message.ID,
+	
+	keyboard := p.buildKeyboard()
+	text := p.buildText()
+	textChanged := text != p.text
+	kbdChanged := !reflect.DeepEqual(keyboard, p.keyboard.InlineKeyboard)
+
+	if textChanged {
+		p.text = text
+	}
+	if kbdChanged {
+		p.keyboard.InlineKeyboard = keyboard
+	}
+	var err error
+	if textChanged {
+		_, err = p.Bot.EditMessageText(p.Ctx, &bot.EditMessageTextParams{
+			ChatID:    p.Message.Chat.ID,
+			MessageID: p.Message.ID,
 			// InlineMessageID: p.callbackQuery.InlineMessageID,
 			Text:        p.text,
 			ParseMode:   models.ParseModeHTML,
-			ReplyMarkup: p.kbd,
+			ReplyMarkup: p.keyboard,
 		})
-		if err != nil {
-			utils.LogError(err)
-		}
 	}
 
-	if !p.textChanged && p.kbdChanged {
-		var _, err = p.Bot.EditMessageReplyMarkup(p.Ctx, &bot.EditMessageReplyMarkupParams{
-			ChatID:    p.message.Chat.ID,
-			MessageID: p.message.ID,
+	if !textChanged && kbdChanged {
+		_, err = p.Bot.EditMessageReplyMarkup(p.Ctx, &bot.EditMessageReplyMarkupParams{
+			ChatID:    p.Message.Chat.ID,
+			MessageID: p.Message.ID,
 			// InlineMessageID: p.callbackQuery.InlineMessageID,
-			ReplyMarkup: p.kbd,
+			ReplyMarkup: p.keyboard,
 		})
-		if err != nil {
-			utils.LogError(err)
-		}
+	}
+
+	if err != nil {
+		utils.LogError(errors.Wrap(err, "Refresh"))
 	}
 }
 
@@ -375,12 +393,8 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			p.Sort()
 		case CB_ACTION:
 			if p.selectedItem != -1 {
-				for i := range p.actions {
-					if p.actions[i] == payload {
-						if p.virtual.ItemActionExec(p.selectedItem, payload) {
-							p.selectedItem = -1
-						}
-					}
+				if p.virtual.ItemActionExec(p.selectedItem, payload) {
+					p.selectedItem = -1
 				}
 			}
 		}

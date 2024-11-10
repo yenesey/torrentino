@@ -2,7 +2,6 @@ package search
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -46,44 +45,43 @@ func NewPaginator(query string) *FindPaginator {
 	return &fp
 }
 
+func (p *FindPaginator) Item(i int) *ListItem {
+	return p.Paginator.Item(i).(*ListItem)
+}
+
 // method overload
 func (p *FindPaginator) ItemString(i int) string {
 
-	if data, ok := p.Item(i).(*ListItem); ok {
-		return data.Title +
-			" [" + utils.FormatFileSize(uint64(data.Size)) + "] [" + data.TrackerId + "]" +
-			" [" + strconv.Itoa(int(data.Seeders)) + "s/" + strconv.Itoa(int(data.Peers)) + "p]" +
-
-			(func() string {
-				if data.Link != "" {
-					return " 📎"
-				}
-				return ""
-			})() +
-			(func() string {
-				if data.MagnetUri != "" {
-					return " 🧲"
-				}
-				return ""
-			})() +
-			(func() (result string) {
-				if data.InTorrents {
-					result += " 📥"
-				}
-				if data.InTorrserver {
-					result += " 🎦"
-				}
-				return
-			})()
-	} else {
-		utils.LogError(fmt.Errorf("ItemString: type assertion error"))
-	}
-	return ""
+	item := p.Item(i)
+	return item.Title +
+		" [" + utils.FormatFileSize(uint64(item.Size)) + "] [" + item.TrackerId + "]" +
+		" [" + strconv.Itoa(int(item.Seeders)) + "s/" + strconv.Itoa(int(item.Peers)) + "p]" +
+		(func() string {
+			if item.Link != "" {
+				return " 📎"
+			}
+			return ""
+		})() +
+		(func() string {
+			if item.MagnetUri != "" {
+				return " 🧲"
+			}
+			return ""
+		})() +
+		(func() (result string) {
+			if item.InTorrents {
+				result += " 📥"
+			}
+			if item.InTorrserver {
+				result += " 🎦"
+			}
+			return
+		})()
 }
 
 // method overload
 func (p *FindPaginator) AttributeByName(i int, attributeName string) string {
-	item := p.Item(i).(*ListItem)
+	item := p.Item(i)
 	if attributeName == "TrackerId" {
 		return item.TrackerId
 	} else if attributeName == "TrackerType" {
@@ -94,8 +92,8 @@ func (p *FindPaginator) AttributeByName(i int, attributeName string) string {
 
 // method overload
 func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
-	a := p.Item(i).(*ListItem)
-	b := p.Item(j).(*ListItem)
+	a := p.Item(i)
+	b := p.Item(j)
 	switch attributeKey {
 	case "Size":
 		return a.Size < b.Size
@@ -115,7 +113,7 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 // method overload
 func (p *FindPaginator) ItemActions(i int) (result []string) {
 
-	item := p.Item(i).(*ListItem)
+	item := p.Item(i)
 	if item.InfoHash == "" && item.Link != "" {
 		res, err := http.Get(item.Link)
 		if err != nil {
@@ -154,7 +152,7 @@ func (p *FindPaginator) ItemActions(i int) (result []string) {
 // method overload
 func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bool) {
 
-	item := p.Item(i).(*ListItem)
+	item := p.Item(i)
 
 	var urlOrMagnet string
 	if item.Link != "" {
@@ -163,44 +161,30 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bo
 		urlOrMagnet = item.MagnetUri
 	}
 
+	var err error
 	switch actionKey {
 	case "download":
-		_, err := transmission.Add(urlOrMagnet)
-		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
-		} else {
+		if _, err = transmission.Add(urlOrMagnet); err == nil {
 			item.InTorrents = true
 		}
 
 	case "torrsrv":
-		err := torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details))
-		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
-		} else {
+		if err = torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details)); err == nil {
 			item.InTorrserver = true
 		}
 	case "web page":
-		p.Bot.SendMessage(p.Ctx, &bot.SendMessageParams{
-			ChatID:      p.ChatID,
-			Text:        item.Details,
-			ParseMode:   models.ParseModeHTML,
-			ReplyMarkup: nil,
-		})
+		p.ReplyMessage(item.Details)
 
 	case ".torrent":
-		res, err := http.Get(item.Link)
-		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
-			return false
+		var res *http.Response
+		if res, err = http.Get(item.Link); err == nil {
+		    p.ReplyDocument(&models.InputFileUpload{Filename: item.Title + ".torrent", Data: res.Body})
 		}
-		p.Bot.SendDocument(p.Ctx, &bot.SendDocumentParams{
-			ChatID:      p.ChatID,
-			Document:    &models.InputFileUpload{Filename: item.Title + ".torrent", Data: res.Body},
-			ParseMode:   models.ParseModeHTML,
-			ReplyMarkup: nil,
-		})
 	}
-
+	if err != nil {
+		utils.LogError(errors.Wrap(err, "ItemActionExec"))
+		return false
+	}
 	return true
 }
 

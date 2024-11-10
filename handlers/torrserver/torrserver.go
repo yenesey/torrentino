@@ -2,7 +2,6 @@ package torrserver
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -13,40 +12,38 @@ import (
 	"torrentino/common/utils"
 )
 
-type TorrserverList struct {
+type TorrserverPaginator struct {
 	paginator.Paginator
 }
 
 // ----------------------------------------
-func NewPaginator() *TorrserverList {
-	var p TorrserverList
-	p = TorrserverList{
-		*paginator.New(&p, "torrerver", 4),
+func NewPaginator() *TorrserverPaginator {
+	var p TorrserverPaginator
+	p = TorrserverPaginator{
+		*paginator.New(&p, "torrserver", 4),
 	}
 	return &p
 }
 
-// method overload
-func (p *TorrserverList) ItemString(i int) string {
-
-	if item, ok := p.Item(i).(torrserver.TSListItem); ok {
-		return item.Title +
-			" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
-	} else {
-		utils.LogError(fmt.Errorf("ItemString %s", "error"))
-	}
-	return ""
+func (p *TorrserverPaginator) Item(i int) *torrserver.TSListItem {
+	return p.Paginator.Item(i).(*torrserver.TSListItem)
 }
 
 // method overload
-func (p *TorrserverList) ItemActions(i int) (result []string) {
-	result = []string{"delete"}
-	return
+func (p *TorrserverPaginator) ItemString(i int) string {
+	item:= p.Item(i)
+	return item.Title +
+		" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
 }
 
 // method overload
-func (p *TorrserverList) ItemActionExec(i int, actionKey string) bool {
-	item := p.Item(i).(torrserver.TSListItem)
+func (p *TorrserverPaginator) ItemActions(i int) []string {
+	return []string{"delete"}
+}
+
+// method overload
+func (p *TorrserverPaginator) ItemActionExec(i int, actionKey string) bool {
+	item := p.Item(i)
 	if actionKey == "delete" {
 		if err := torrserver.Delete(item.Hash); err == nil {
 			p.Reload()
@@ -55,14 +52,13 @@ func (p *TorrserverList) ItemActionExec(i int, actionKey string) bool {
 			utils.LogError(errors.Wrap(err, "ItemActionExec"))
 		}
 	}
-
 	return true
 }
 
 // method overload
-func (p *TorrserverList) LessItem(i int, j int, attributeKey string) bool {
-	a := p.Item(i).(torrserver.TSListItem)
-	b := p.Item(j).(torrserver.TSListItem)
+func (p *TorrserverPaginator) LessItem(i int, j int, attributeKey string) bool {
+	a := p.Item(i)
+	b := p.Item(j)
 	switch attributeKey {
 	case "Size":
 		return a.Torrent_Size < b.Torrent_Size
@@ -71,7 +67,7 @@ func (p *TorrserverList) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *TorrserverList) Reload() {
+func (p *TorrserverPaginator) Reload() {
 
 	result, err := torrserver.List()
 	if err != nil {
@@ -80,7 +76,7 @@ func (p *TorrserverList) Reload() {
 
 	p.Alloc(len(*result))
 	for i := range *result {
-		p.Append((*result)[i])
+		p.Append(&(*result)[i])
 	}
 	p.Paginator.Reload()
 }
