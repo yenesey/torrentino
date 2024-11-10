@@ -161,44 +161,30 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bo
 		urlOrMagnet = item.MagnetUri
 	}
 
+	var err error
 	switch actionKey {
 	case "download":
-		_, err := transmission.Add(urlOrMagnet)
-		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
-		} else {
+		if _, err = transmission.Add(urlOrMagnet); err == nil {
 			item.InTorrents = true
 		}
 
 	case "torrsrv":
-		err := torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details))
-		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
-		} else {
+		if err = torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details)); err == nil {
 			item.InTorrserver = true
 		}
 	case "web page":
-		p.Bot.SendMessage(p.Ctx, &bot.SendMessageParams{
-			ChatID:      p.ChatID,
-			Text:        item.Details,
-			ParseMode:   models.ParseModeHTML,
-			ReplyMarkup: nil,
-		})
+		p.ReplyMessage(item.Details)
 
 	case ".torrent":
-		res, err := http.Get(item.Link)
-		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
-			return false
+		var res *http.Response
+		if res, err = http.Get(item.Link); err == nil {
+		    p.ReplyDocument(&models.InputFileUpload{Filename: item.Title + ".torrent", Data: res.Body})
 		}
-		p.Bot.SendDocument(p.Ctx, &bot.SendDocumentParams{
-			ChatID:      p.ChatID,
-			Document:    &models.InputFileUpload{Filename: item.Title + ".torrent", Data: res.Body},
-			ParseMode:   models.ParseModeHTML,
-			ReplyMarkup: nil,
-		})
 	}
-
+	if err != nil {
+		utils.LogError(errors.Wrap(err, "ItemActionExec"))
+		return false
+	}
 	return true
 }
 
