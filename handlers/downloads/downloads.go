@@ -297,10 +297,10 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	var p = NewPaginator()
 	p.Sorting.Setup([]paginator.SortHeader{
-		{Name: "AddedDate", ShortName: "date", Order: 1},
-		{Name: "Name", ShortName: "name", Order: 1},
-		{Name: "DownloadedEver", ShortName: "size", Order: 0},
-		{Name: "IsDir", ShortName: "dir", Order: 0},
+		{AttributeName: "AddedDate", ButtonText: "date", Order: 1},
+		{AttributeName: "Name", ButtonText: "name", Order: 1},
+		{AttributeName: "DownloadedEver", ButtonText: "size", Order: 0},
+		{AttributeName: "IsDir", ButtonText: "dir", Order: 0},
 	})
 	p.Filtering.Setup([]string{"Status"})
 

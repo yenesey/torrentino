@@ -8,9 +8,9 @@ import (
 var sortChars = [...]string{"", "▼", "▲"}
 
 type SortHeader struct {
-	Name      string // attribute name in List items
-	ShortName string // button text
-	Order     int8   // 0 - unsorted, 1 - desc,  2 - asc
+	AttributeName    string // attribute name in List items
+	ButtonText       string // button text
+	Order            int8   // 0 - unsorted, 1 - desc,  2 - asc
 }
 
 type SortingState struct {
@@ -30,7 +30,7 @@ func (s *SortingState) Setup(headers []SortHeader) {
 
 func (s *SortingState) GetHeader(attributeKey string) (h *SortHeader, i int) {
 	for i := range s.headers {
-		if s.headers[i].Name == attributeKey {
+		if s.headers[i].AttributeName == attributeKey {
 			return &s.headers[i], i
 		}
 	}
@@ -75,10 +75,10 @@ func (p *Paginator) Less(i, j int) bool {
 	for _, k = range s.multyOrder {
 		h := &s.headers[k]
 		switch {
-		case p.virtual.LessItem(i, j, h.Name):
+		case p.virtual.LessItem(i, j, h.AttributeName):
 			return h.Order == 2
 
-		case p.virtual.LessItem(j, i, h.Name):
+		case p.virtual.LessItem(j, i, h.AttributeName):
 			return h.Order != 2
 		}
 		// i == j; try the next comparison.
