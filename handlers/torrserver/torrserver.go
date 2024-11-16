@@ -85,7 +85,7 @@ func (p *TorrserverPaginator) Reload() {
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var p = NewPaginator()
 	p.Sorting.Setup([]paginator.SortHeader{
-		{Name: "Size", ShortName: "size", Order: 1},
+		{AttributeName: "Size", ButtonText: "size", Order: 1},
 	})
 	p.Reload()
 	p.Show(ctx, b, update.Message.Chat.ID)

@@ -2,8 +2,8 @@ package paginator
 
 import (
 	"context"
-	"slices"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -47,28 +47,27 @@ type Paginator struct {
 	Sorting   SortingState
 	Filtering FilteringState
 
-	Ctx         context.Context
-	Bot        *bot.Bot
-	Message    *models.Message
+	Ctx     context.Context
+	Bot     *bot.Bot
+	Message *models.Message
 
 	extControlsVisible bool
 	activePage         int
 	itemsPerPage       int
 	selectedItem       int
 
-	prefix      string
-	text        string
-	keyboard    models.InlineKeyboardMarkup
+	prefix   string
+	text     string
+	keyboard models.InlineKeyboardMarkup
 }
 
 func New(virtualMethods VirtualMethods, prefix string, itemsPerPage int) *Paginator {
-	var pg = &Paginator{
+	return &Paginator{
 		virtual:      virtualMethods,
 		itemsPerPage: itemsPerPage,
 		prefix:       prefix,
+		selectedItem: -1,
 	}
-	pg.selectedItem = -1
-	return pg
 }
 
 func (p *Paginator) Alloc(l int) {
@@ -156,8 +155,7 @@ func (p *Paginator) ItemActionExec(i int, actionKey string) (unselectItem bool) 
 }
 
 func (p *Paginator) Reload() {
-	p.Filtering.pg = p
-	p.Filtering.ClassifyItems()
+	p.Filtering.ClassifyItems(p.virtual, p.Len())
 	p.Filter()
 	p.Sort()
 }
@@ -229,8 +227,8 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 		row = []models.InlineKeyboardButton{}
 		for _, v := range p.Sorting.headers {
 			row = append(row, models.InlineKeyboardButton{
-				Text:         v.ShortName + sortChars[int(v.Order)],
-				CallbackData: p.prefix + CB_ORDER_BY + v.Name,
+				Text:         v.ButtonText + sortChars[int(v.Order)],
+				CallbackData: p.prefix + CB_ORDER_BY + v.AttributeName,
 			})
 		}
 		if len(row) > 0 {
@@ -242,7 +240,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 			for j, val := range attr.Values {
 				row = append(row, models.InlineKeyboardButton{
 					Text:         []string{"", "✓"}[btoi(val.Enabled)] + val.Value,
-					CallbackData: p.prefix + CB_FILTER_BY + attr.Name + "/" + val.Value,
+					CallbackData: p.prefix + CB_FILTER_BY + attr.AttributeName + "/" + val.Value,
 				})
 				if (j+1)%4 == 0 { // 4 buttons max
 					keyboard = append(keyboard, row)
@@ -309,7 +307,7 @@ func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) {
 }
 
 func (p *Paginator) Refresh() {
-	
+
 	keyboard := p.buildKeyboard()
 	text := p.buildText()
 	textChanged := text != p.text
