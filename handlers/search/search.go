@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/antchfx/htmlquery"
@@ -169,7 +170,7 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bo
 		}
 
 	case "torrsrv":
-		if err = torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details)); err == nil {
+		if err = torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details, item.TrackerId)); err == nil {
 			item.InTorrserver = true
 		}
 	case "web page":
@@ -178,7 +179,7 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bo
 	case ".torrent":
 		var res *http.Response
 		if res, err = http.Get(item.Link); err == nil {
-		    p.ReplyDocument(&models.InputFileUpload{Filename: item.Title + ".torrent", Data: res.Body})
+			p.ReplyDocument(&models.InputFileUpload{Filename: item.Title + ".torrent", Data: res.Body})
 		}
 	}
 	if err != nil {
@@ -224,7 +225,7 @@ func (p *FindPaginator) Reload() {
 }
 
 // -------------------------------------------------------------------------
-func getPosterLinkFromPage(url string) string {
+func getPosterLinkFromPage(pageUrl string, tracker string) string {
 
 	var findKey = func(attr []html.Attribute, key string) string {
 		for i := range attr {
@@ -234,31 +235,42 @@ func getPosterLinkFromPage(url string) string {
 		}
 		return ""
 	}
-
-	doc, err := htmlquery.LoadURL(url)
+	parsedUrl, err := url.Parse(pageUrl)
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "getPosterLinkFromPage: htmlquery.LoadURL"))
+		utils.LogError(errors.Wrap(err, "getPosterLinkFromPage - url.Parse:"))
 		return ""
 	}
 
-	poster := htmlquery.Find(doc, "//var[@class=\"postImg postImgAligned img-right\"]") // rutracker
-	if len(poster) > 0 {
-		if res := findKey(poster[0].Attr, "title"); res != "" {
-			return res
+	doc, err := htmlquery.LoadURL(pageUrl)
+	if err != nil {
+		utils.LogError(errors.Wrap(err, "getPosterLinkFromPage - htmlquery.LoadURL:"))
+		return ""
+	}
+
+	switch tracker {
+	case "rutor":
+		poster := htmlquery.Find(doc, "//table[@id=\"details\"]/*/tr/td[2]/*/img")
+		if len(poster) > 0 {
+			if res := findKey(poster[0].Attr, "src"); res != "" {
+				return res
+			}
+		}
+	case "rutracker":
+		poster := htmlquery.Find(doc, "//var[@class=\"postImg postImgAligned img-right\"]")
+		if len(poster) > 0 {
+			if res := findKey(poster[0].Attr, "title"); res != "" {
+				return res
+			}
+		}
+	case "kinozal":
+		poster := htmlquery.Find(doc, "//body/div/div[3]/div[2]/div[1]/div[2]/ul/li[1]/a/img")
+		if len(poster) > 0 {
+			if res := findKey(poster[0].Attr, "src"); res != "" {
+				return parsedUrl.Scheme + ":" + parsedUrl.Host + res
+			}
 		}
 	}
-	poster = htmlquery.Find(doc, "//table[@id=\"details\"]/tr/td[2]/img") // rutor
-	if len(poster) > 0 {
-		if res := findKey(poster[0].Attr, "src"); res != "" {
-			return res
-		}
-	}
-	poster = htmlquery.Find(doc, "//table[@id=\"details\"]//img")
-	if len(poster) > 0 {
-		if res := findKey(poster[0].Attr, "src"); res != "" {
-			return res
-		}
-	}
+
 	return ""
 }
 
