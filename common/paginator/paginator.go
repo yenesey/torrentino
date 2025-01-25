@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/pkg/errors"
 
 	"torrentino/common/utils"
 )
@@ -33,7 +32,7 @@ type VirtualMethods interface {
 	FooterString() string
 	ItemString(i int) string
 	AttributeByName(i int, attributeName string) string
-	ItemActions(i int) []string
+	ItemContextActions(i int) []string
 	ItemActionExec(i int, actionKey string) (unselectItem bool)
 	LessItem(i int, j int, attributeName string) bool
 	Reload()
@@ -98,7 +97,7 @@ func (p *Paginator) ReplyMessage(text string) {
 		ReplyMarkup: nil,
 	})
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "ReplyMessage"))
+		utils.LogError(err)
 	}
 }
 
@@ -110,7 +109,7 @@ func (p *Paginator) ReplyDocument(doc *models.InputFileUpload) {
 		ReplyMarkup: nil,
 	})
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "ReplyDocument"))
+		utils.LogError(err)
 	}
 }
 
@@ -146,7 +145,7 @@ func (p *Paginator) LessItem(i int, j int, attributeName string) bool {
 	return false
 }
 
-func (p *Paginator) ItemActions(i int) []string {
+func (p *Paginator) ItemContextActions(i int) []string {
 	return nil
 }
 
@@ -265,7 +264,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 	if !p.extControlsVisible && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
 		row = []models.InlineKeyboardButton{}
-		for i, action := range p.virtual.ItemActions(p.selectedItem) {
+		for i, action := range p.virtual.ItemContextActions(p.selectedItem) {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         action,
 				CallbackData: p.prefix + CB_ACTION + action,
@@ -302,7 +301,7 @@ func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) {
 		ReplyMarkup: p.keyboard,
 	})
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "Show"))
+		utils.LogError(err)
 	}
 }
 
@@ -341,7 +340,7 @@ func (p *Paginator) Refresh() {
 	}
 
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "Refresh"))
+		utils.LogError(err)
 	}
 }
 

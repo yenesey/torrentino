@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/pkg/errors"
 
 	"torrentino/api/torrserver"
 	"torrentino/common/paginator"
@@ -31,13 +30,13 @@ func (p *TorrserverPaginator) Item(i int) *torrserver.TSListItem {
 
 // method overload
 func (p *TorrserverPaginator) ItemString(i int) string {
-	item:= p.Item(i)
+	item := p.Item(i)
 	return item.Title +
 		" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
 }
 
 // method overload
-func (p *TorrserverPaginator) ItemActions(i int) []string {
+func (p *TorrserverPaginator) ItemContextActions(i int) []string {
 	return []string{"delete"}
 }
 
@@ -46,10 +45,9 @@ func (p *TorrserverPaginator) ItemActionExec(i int, actionKey string) bool {
 	item := p.Item(i)
 	if actionKey == "delete" {
 		if err := torrserver.Delete(item.Hash); err == nil {
-			p.Reload()
-			p.Refresh()
+			p.Delete(i)
 		} else {
-			utils.LogError(errors.Wrap(err, "ItemActionExec"))
+			utils.LogError(err)
 		}
 	}
 	return true
@@ -71,7 +69,7 @@ func (p *TorrserverPaginator) Reload() {
 
 	result, err := torrserver.List()
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "Reload"))
+		utils.LogError(err)
 	}
 
 	p.Alloc(len(*result))

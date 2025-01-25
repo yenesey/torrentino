@@ -15,7 +15,6 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/hekmon/transmissionrpc/v2"
-	"github.com/pkg/errors"
 
 	"torrentino/api/transmission"
 	"torrentino/common"
@@ -159,7 +158,7 @@ func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *ListPaginator) ItemActions(i int) (result []string) {
+func (p *ListPaginator) ItemContextActions(i int) (result []string) {
 	item := p.Item(i)
 
 	switch item.Status {
@@ -190,6 +189,7 @@ func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bo
 			}
 		}
 		p.Delete(i)
+		p.Sort()
 	case "start":
 		err = transmission.Start(*item.ID)
 	case "pause":
@@ -197,7 +197,7 @@ func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bo
 	}
 
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "ItemActionExec"))
+		utils.LogError(err)
 	}
 	return true
 }
@@ -207,7 +207,7 @@ func (p *ListPaginator) Reload() {
 
 	torrents, err := transmission.List()
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "Reload"))
+		utils.LogError(err)
 		return
 	}
 
@@ -232,7 +232,7 @@ func (p *ListPaginator) Reload() {
 
 	dir, err := utils.ReadDir(common.Settings.Download_dir, false)
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "Reload"))
+		utils.LogError(err)
 	} else {
 
 		for dirEntry := range dir {
