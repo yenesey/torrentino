@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -93,5 +94,27 @@ func LogError(err error) {
 	pc, file, line, _ := runtime.Caller(1)
 	_, fileName := path.Split(file)
 	parts := strings.Split(runtime.FuncForPC(pc).Name(), ".")
-	log.Printf("[%s]: %s", parts[0]+"("+fileName+")."+parts[1]+"("+strconv.Itoa(line)+")", err)
+	funcName := strings.Join(parts[1:], ".")
+	log.Printf("[%s/%s(%s)] %s: %s", parts[0][11:], fileName, strconv.Itoa(line), funcName, err)
+}
+
+func WithTimeout(cbfn func() error, ms time.Duration) error {
+	var err error
+	ctx, cancel := context.WithTimeout(context.Background(), ms*time.Millisecond)
+	defer cancel()
+	done := make(chan struct{}, 1)
+
+	go func() {
+		err = cbfn()
+		done <- struct{}{}
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
 }

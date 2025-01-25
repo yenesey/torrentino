@@ -112,19 +112,22 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *FindPaginator) ItemActions(i int) (result []string) {
+func (p *FindPaginator) ItemContextActions(i int) (result []string) {
 
 	item := p.Item(i)
 	if item.InfoHash == "" && item.Link != "" {
 		res, err := http.Get(item.Link)
 		if err != nil {
-			utils.LogError(errors.Wrap(err, "ItemActions: http.Get"))
+			utils.LogError(err)
+		} else if res.StatusCode != 200 {
+			utils.LogError(errors.New(res.Status + " (request Jackett by item url)"))
 		} else {
 			torrent, err := gotorrentparser.Parse(res.Body)
 			if err != nil {
-				utils.LogError(errors.Wrap(err, "ItemActions: gotorrentparser.Parse"))
+				utils.LogError(err)
+			} else {
+				item.InfoHash = torrent.InfoHash
 			}
-			item.InfoHash = torrent.InfoHash
 		}
 	}
 
@@ -183,7 +186,7 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bo
 		}
 	}
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "ItemActionExec"))
+		utils.LogError(err)
 		return false
 	}
 	return true
@@ -194,13 +197,13 @@ func (p *FindPaginator) Reload() {
 
 	result, err := jackett.Query(p.query, common.Settings.Jackett.Indexers)
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "Reload: jackett.Query()"))
+		utils.LogError(err)
 		return
 	}
 
 	trList, err := transmission.List()
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "Reload: transmission.List()"))
+		utils.LogError(err)
 	} else {
 		for _, el := range *trList {
 			p.transmissionHashes[*el.HashString] = true
@@ -209,7 +212,7 @@ func (p *FindPaginator) Reload() {
 
 	tsList, err := torrserver.List()
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "Reload: torrserver.List()"))
+		utils.LogError(err)
 	} else {
 		for _, el := range *tsList {
 			p.torrserverHashes[el.Hash] = true
@@ -237,13 +240,13 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 	}
 	parsedUrl, err := url.Parse(pageUrl)
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "getPosterLinkFromPage - url.Parse:"))
+		utils.LogError(err)
 		return ""
 	}
 
 	doc, err := htmlquery.LoadURL(pageUrl)
 	if err != nil {
-		utils.LogError(errors.Wrap(err, "getPosterLinkFromPage - htmlquery.LoadURL:"))
+		utils.LogError(err)
 		return ""
 	}
 
@@ -266,7 +269,7 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 		poster := htmlquery.Find(doc, "//body/div/div[3]/div[2]/div[1]/div[2]/ul/li[1]/a/img")
 		if len(poster) > 0 {
 			if res := findKey(poster[0].Attr, "src"); res != "" {
-				return parsedUrl.Scheme + ":" + parsedUrl.Host + res
+				return parsedUrl.Scheme + "://" + parsedUrl.Host + res
 			}
 		}
 	}

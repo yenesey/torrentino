@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"torrentino/common"
+	"torrentino/common/utils"
 )
 
 type TSListItem struct {
@@ -42,16 +43,27 @@ var url = "http://" + common.Settings.Torrserver.Host + ":" + strconv.Itoa(commo
 */
 
 func List() (*[]TSListItem, error) {
+	var res *http.Response
+	var err error
+	var data []byte
 
-	res, err := http.Post(
-		url,
-		"application/json",
-		strings.NewReader("{\"action\" : \"list\"}"),
+	err = utils.WithTimeout(
+		func() error {
+			var err error
+			res, err = http.Post(
+				url,
+				"application/json",
+				strings.NewReader("{\"action\" : \"list\"}"),
+			)
+			return err
+		},
+		2000,
 	)
 	if err != nil {
 		return nil, err
 	}
-	data, err := io.ReadAll(res.Body)
+
+	data, err = io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -71,31 +83,42 @@ func List() (*[]TSListItem, error) {
 }
 
 func Add(link string, title string, poster string) error {
-	res, err := http.Post(
-		url,
-		"application/json",
-		strings.NewReader("{\"action\" : \"add\","+
-			"\"link\" : \""+link+"\","+
-			"\"title\" : \""+title+"\","+
-			"\"poster\" : \""+poster+"\","+
-			"\"save_to_db\" : true}"),
+
+	return utils.WithTimeout(
+		func() error {
+			res, err := http.Post(
+				url,
+				"application/json",
+				strings.NewReader("{\"action\" : \"add\","+
+					"\"link\" : \""+link+"\","+
+					"\"title\" : \""+title+"\","+
+					"\"poster\" : \""+poster+"\","+
+					"\"save_to_db\" : true}"),
+			)
+			if res.StatusCode != 200 {
+				return fmt.Errorf("request error: %s", res.Status)
+			}
+			return err
+		},
+		2000,
 	)
-	if res.StatusCode != 200 {
-		return fmt.Errorf("request error: %s", res.Status)
-	}
-	return err
 }
 
 func Delete(hash string) error {
-	res, err := http.Post(
-		url,
-		"application/json",
-		strings.NewReader(
-			"{\"action\" : \"rem\","+
-				"\"hash\" : \""+hash+"\"}"),
-	)
-	if res.StatusCode != 200 {
-		return fmt.Errorf("request error: %s", res.Status)
-	}
-	return err
+
+	return utils.WithTimeout(
+		func() error {
+			res, err := http.Post(
+				url,
+				"application/json",
+				strings.NewReader(
+					"{\"action\" : \"rem\","+
+						"\"hash\" : \""+hash+"\"}"),
+			)
+			if res.StatusCode != 200 {
+				return fmt.Errorf("request error: %s", res.Status)
+			}
+			return err
+		},
+		2000)
 }

@@ -71,8 +71,9 @@ func (f *FilteringState) ClassifyItems(p VirtualMethods, l int) {
 
 func (p *Paginator) Filter() {
 	// defer utils.TimeTrack(utils.Now(), "Filtering")
-	index := make([]int, 0, len(p.index))
-	for i := range p.index {
+	index := make([]int, 0, len(p.list))
+	p.index = make([]int, len(p.list))
+	for i := range p.list {
 		p.index[i] = i
 	}
 	for i := range p.list {
