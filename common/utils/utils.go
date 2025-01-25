@@ -93,10 +93,9 @@ func ReadDir(rootPath string, recursive bool) (<-chan FileInfo, error) {
 func LogError(err error) {
 	pc, file, line, _ := runtime.Caller(1)
 	_, fileName := path.Split(file)
-	name := runtime.FuncForPC(pc).Name()
-	parts := strings.Split(name, ".")
-	name = strings.Join(parts[1:], ".")
-	log.Printf("[%s]: %s", parts[0][11:]+"/"+fileName+"("+strconv.Itoa(line)+"):"+name, err)
+	parts := strings.Split(runtime.FuncForPC(pc).Name(), ".")
+	funcName := strings.Join(parts[1:], ".")
+	log.Printf("[%s/%s(%s)] %s: %s", parts[0][11:], fileName, strconv.Itoa(line), funcName, err)
 }
 
 func WithTimeout(cbfn func() error, ms time.Duration) error {
