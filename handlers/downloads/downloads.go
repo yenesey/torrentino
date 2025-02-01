@@ -132,9 +132,10 @@ func (p *ListPaginator) FooterString() string {
 }
 
 // method overload
-func (p *ListPaginator) AttributeByName(i int, attributeName string) string {
+func (p *ListPaginator) StringValueByName(_item any, attributeName string) string {
+	item := _item.(*ListItem)
 	if attributeName == "Status" {
-		return p.Item(i).Status
+		return item.Status
 	}
 	return ""
 }

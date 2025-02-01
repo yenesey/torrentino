@@ -81,8 +81,8 @@ func (p *FindPaginator) ItemString(i int) string {
 }
 
 // method overload
-func (p *FindPaginator) AttributeByName(i int, attributeName string) string {
-	item := p.Item(i)
+func (p *FindPaginator) StringValueByName(_item any, attributeName string) string {
+	item := _item.(*ListItem)
 	if attributeName == "TrackerId" {
 		return item.TrackerId
 	} else if attributeName == "TrackerType" {
