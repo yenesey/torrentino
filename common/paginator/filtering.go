@@ -1,5 +1,10 @@
 package paginator
 
+import (
+	// "reflect"
+	// "torrentino/common/utils"
+)
+
 type FilterAttribute struct {
 	AttributeName string
 	Values        []string
@@ -38,6 +43,7 @@ func (p *Paginator) Filter() {
 		keepItem := false
 		for j := range p.Filtering.attributes {
 			attr := &p.Filtering.attributes[j]
+			// stringValue := reflect.Indirect(reflect.ValueOf(p.list[i])).FieldByName(attr.AttributeName).String()
 			stringValue := p.virtual.StringValueByName(p.list[i], attr.AttributeName)
 			for _, value := range attr.Values {
 				if attr.State[value] {
