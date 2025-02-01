@@ -55,6 +55,9 @@ func List() (*[]TSListItem, error) {
 				"application/json",
 				strings.NewReader("{\"action\" : \"list\"}"),
 			)
+			if res != nil && res.StatusCode != 200 {
+				return fmt.Errorf("request error: %s", res.Status)
+			}
 			return err
 		},
 		2000,
@@ -95,7 +98,7 @@ func Add(link string, title string, poster string) error {
 					"\"poster\" : \""+poster+"\","+
 					"\"save_to_db\" : true}"),
 			)
-			if res.StatusCode != 200 {
+			if res != nil && res.StatusCode != 200 {
 				return fmt.Errorf("request error: %s", res.Status)
 			}
 			return err
@@ -115,7 +118,7 @@ func Delete(hash string) error {
 					"{\"action\" : \"rem\","+
 						"\"hash\" : \""+hash+"\"}"),
 			)
-			if res.StatusCode != 200 {
+			if res != nil && res.StatusCode != 200 {
 				return fmt.Errorf("request error: %s", res.Status)
 			}
 			return err

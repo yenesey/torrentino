@@ -193,12 +193,12 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bo
 }
 
 // method overload
-func (p *FindPaginator) Reload() {
+func (p *FindPaginator) Reload() error {
 
 	result, err := jackett.Query(p.query, common.Settings.Jackett.Indexers)
 	if err != nil {
 		utils.LogError(err)
-		return
+		return err
 	}
 
 	trList, err := transmission.List()
@@ -224,7 +224,7 @@ func (p *FindPaginator) Reload() {
 		hash := (*result)[i].InfoHash
 		p.Append(&ListItem{(*result)[i], p.transmissionHashes[hash], p.torrserverHashes[hash]})
 	}
-	p.Paginator.Reload()
+	return p.Paginator.Reload()
 }
 
 // -------------------------------------------------------------------------
@@ -286,6 +286,14 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		{AttributeName: "Link", ButtonText: "file", Order: 0},
 	})
 	p.Filtering.Setup([]string{"TrackerId"})
-	p.Reload()
-	p.Show(ctx, b, update.Message.Chat.ID)
+	if err := p.Reload(); err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:      update.Message.Chat.ID,
+			Text:        err.Error(),
+			ParseMode:   models.ParseModeHTML,
+			ReplyMarkup: nil,
+		})
+	} else {
+		p.Show(ctx, b, update.Message.Chat.ID)
+	}
 }

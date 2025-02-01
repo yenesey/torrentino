@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 
 	"torrentino/common"
+	"torrentino/common/utils"
 )
 
 type jackettTime struct {
@@ -99,19 +100,28 @@ var baseUrl string
 var client *http.Client
 
 func httpGet(addUrl string) (*[]byte, error) {
-	req, err := http.NewRequest("GET", baseUrl+addUrl, nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := client.Do(req)
+	var res *http.Response
+	err := utils.WithTimeout(
+		func() error {
+			req, err := http.NewRequest("GET", baseUrl+addUrl, nil)
+			if err != nil {
+				return err
+			}
+			res, err = client.Do(req)
+			if err != nil {
+				return err
+			}
+			if res != nil && res.StatusCode != 200 {
+				return fmt.Errorf("request error: %s", res.Status)
+			}
+			return err
+		},
+		20000,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		return nil, fmt.Errorf(res.Status)
-	}
-
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
@@ -145,13 +155,13 @@ func Query(str string, indexers []string) (*[]Result, error) {
 	u = u + "&Query=" + url.QueryEscape(str)
 	data, err := httpGet(u)
 	if err != nil {
-		return nil, errors.Wrap(err, "Query")
+		return nil, errors.Wrap(err, "Jackett")
 	}
 
 	var r QueryResults
 	err = json.Unmarshal(*data, &r)
 	if err != nil {
-		return nil, errors.Wrap(err, "Query")
+		return nil, errors.Wrap(err, "Jackett")
 	}
 	return &r.Results, nil
 }

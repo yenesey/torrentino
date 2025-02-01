@@ -204,12 +204,12 @@ func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bo
 }
 
 // method overload
-func (p *ListPaginator) Reload() {
+func (p *ListPaginator) Reload() error {
 
 	torrents, err := transmission.List()
 	if err != nil {
 		utils.LogError(err)
-		return
+		return err
 	}
 
 	listItems := make([]ListItem, len(*torrents), len(*torrents)*2)
@@ -287,7 +287,7 @@ func (p *ListPaginator) Reload() {
 	for i := range listItems {
 		p.Append(&listItems[i])
 	}
-	p.Paginator.Reload()
+	return p.Paginator.Reload()
 }
 
 // -------------------------------------------------------------------------

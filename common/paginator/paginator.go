@@ -35,7 +35,7 @@ type VirtualMethods interface {
 	ItemContextActions(i int) []string
 	ItemActionExec(i int, actionKey string) (unselectItem bool)
 	LessItem(i int, j int, attributeName string) bool
-	Reload()
+	Reload() error
 }
 
 type Paginator struct {
@@ -86,8 +86,6 @@ func (p *Paginator) Append(item any) {
 			attr.Values = append(attr.Values, value)
 		}
 	}
-
-
 }
 
 func (p *Paginator) Delete(i int) {
@@ -164,10 +162,10 @@ func (p *Paginator) ItemActionExec(i int, actionKey string) (unselectItem bool) 
 	return true
 }
 
-func (p *Paginator) Reload() {
-	// p.Filtering.ClassifyItems(p.virtual, p.Len())
+func (p *Paginator) Reload() error {
 	p.Filter()
 	p.Sort()
+	return nil
 }
 
 // ----------------------------------------
