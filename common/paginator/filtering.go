@@ -38,23 +38,20 @@ func (f *FilteringState) Toggle(attributeName string, attributeValue string) {
 func (p *Paginator) Filter() {
 	// defer utils.TimeTrack(utils.Now(), "Filtering")
 	index := make([]int, 0, len(p.list))
-	for i := range p.list {
-		anyFilter := false
+	for i := range p.list {	
 		keepItem := false
 		for j := range p.Filtering.attributes {
 			attr := &p.Filtering.attributes[j]
 			// stringValue := reflect.Indirect(reflect.ValueOf(p.list[i])).FieldByName(attr.AttributeName).String()
 			stringValue := p.virtual.StringValueByName(p.list[i], attr.AttributeName)
-			for _, value := range attr.Values {
-				if attr.State[value] {
-					anyFilter = true
-					if stringValue == value {
-						keepItem = true
-					}
+			keepItem = keepItem || attr.State[stringValue] || func() bool { //  exact filter on, or all filters is off
+				for _, state := range attr.State {
+					if state { return false }
 				}
-			}
+				return true
+			}() 
 		}
-		if !anyFilter || (anyFilter && keepItem) {
+		if keepItem {
 			index = append(index, i)
 		}
 	}
