@@ -189,8 +189,10 @@ func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bo
 				err = os.Remove(common.Settings.Download_dir + "/" + *item.Name)
 			}
 		}
-		p.Delete(i)
-		p.Sort()
+		if err == nil {
+			p.Delete(i)
+			p.Sort()
+		}
 	case "start":
 		err = transmission.Start(*item.ID)
 	case "pause":
@@ -291,12 +293,26 @@ func (p *ListPaginator) Reload() error {
 }
 
 // -------------------------------------------------------------------------
-var gDone chan bool = make(chan bool, 1)
-var gFirstFun bool = true
+func Updater(ctx context.Context, p *ListPaginator) {
+	ticker := time.NewTicker(time.Second * 5)
+	for {
+		select {
+		case <-ticker.C:
+			p.Reload()
+			p.Refresh()
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		}
+	}
+}
+
+var cancel context.CancelFunc = nil
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	var updaterContext context.Context
 
-	var p = NewPaginator()
+	p := NewPaginator()
 	p.Sorting.Setup([]paginator.SortHeader{
 		{AttributeName: "AddedDate", ButtonText: "date", Order: 1},
 		{AttributeName: "Name", ButtonText: "name", Order: 1},
@@ -305,23 +321,11 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	})
 	p.Filtering.Setup([]string{"Status"})
 
-	if !gFirstFun {
-		gDone <- true
+	if cancel != nil {
+		cancel()
 	}
-	gFirstFun = false
-	ticker := time.NewTicker(time.Second * 10)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				p.Reload()
-				p.Refresh()
-			case <-gDone:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	updaterContext, cancel = context.WithCancel(ctx)
+	go Updater(updaterContext, p)
 
 	p.Reload()
 	p.Show(ctx, b, update.Message.Chat.ID)
