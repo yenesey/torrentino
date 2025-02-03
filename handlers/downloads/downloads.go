@@ -293,24 +293,31 @@ func (p *ListPaginator) Reload() error {
 }
 
 // -------------------------------------------------------------------------
-func Updater(ctx context.Context, p *ListPaginator) {
-	ticker := time.NewTicker(time.Second * 5)
-	for {
-		select {
-		case <-ticker.C:
-			p.Reload()
-			p.Refresh()
-		case <-ctx.Done():
-			ticker.Stop()
-			return
+var Updater = func() func(ctx context.Context, p *ListPaginator) {
+	var (
+		cancel   context.CancelFunc
+		context2 context.Context
+	)
+	return func(ctx context.Context, p *ListPaginator) {
+		if cancel != nil {
+			cancel()
+		}
+		context2, cancel = context.WithCancel(ctx)
+		ticker := time.NewTicker(time.Second * 5)
+		for {
+			select {
+			case <-ticker.C:
+				p.Reload()
+				p.Refresh()
+			case <-context2.Done():
+				ticker.Stop()
+				return
+			}
 		}
 	}
-}
-
-var cancel context.CancelFunc = nil
+}()
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	var updaterContext context.Context
 
 	p := NewPaginator()
 	p.Sorting.Setup([]paginator.SortHeader{
@@ -321,11 +328,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	})
 	p.Filtering.Setup([]string{"Status"})
 
-	if cancel != nil {
-		cancel()
-	}
-	updaterContext, cancel = context.WithCancel(ctx)
-	go Updater(updaterContext, p)
+	go Updater(ctx, p)
 
 	p.Reload()
 	p.Show(ctx, b, update.Message.Chat.ID)
