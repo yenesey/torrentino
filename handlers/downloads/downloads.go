@@ -132,9 +132,10 @@ func (p *ListPaginator) FooterString() string {
 }
 
 // method overload
-func (p *ListPaginator) AttributeByName(i int, attributeName string) string {
+func (p *ListPaginator) StringValueByName(_item any, attributeName string) string {
+	item := _item.(*ListItem)
 	if attributeName == "Status" {
-		return p.Item(i).Status
+		return item.Status
 	}
 	return ""
 }
@@ -188,8 +189,10 @@ func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bo
 				err = os.Remove(common.Settings.Download_dir + "/" + *item.Name)
 			}
 		}
-		p.Delete(i)
-		p.Sort()
+		if err == nil {
+			p.Delete(i)
+			p.Sort()
+		}
 	case "start":
 		err = transmission.Start(*item.ID)
 	case "pause":
@@ -203,12 +206,12 @@ func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bo
 }
 
 // method overload
-func (p *ListPaginator) Reload() {
+func (p *ListPaginator) Reload() error {
 
 	torrents, err := transmission.List()
 	if err != nil {
 		utils.LogError(err)
-		return
+		return err
 	}
 
 	listItems := make([]ListItem, len(*torrents), len(*torrents)*2)
@@ -286,16 +289,38 @@ func (p *ListPaginator) Reload() {
 	for i := range listItems {
 		p.Append(&listItems[i])
 	}
-	p.Paginator.Reload()
+	return p.Paginator.Reload()
 }
 
 // -------------------------------------------------------------------------
-var gDone chan bool = make(chan bool, 1)
-var gFirstFun bool = true
+var Updater = func() func(ctx context.Context, p *ListPaginator) {
+	var (
+		cancel     context.CancelFunc
+		updaterCtx context.Context
+	)
+	return func(ctx context.Context, p *ListPaginator) {
+		if cancel != nil {
+			cancel()
+		}
+		updaterCtx, cancel = context.WithCancel(ctx)
+		ticker := time.NewTicker(time.Second * 5)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				p.Reload()
+				p.Refresh()
+			case <-updaterCtx.Done():
+				return
+			}
+		}
+	}
+}()
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
-	var p = NewPaginator()
+	p := NewPaginator()
 	p.Sorting.Setup([]paginator.SortHeader{
 		{AttributeName: "AddedDate", ButtonText: "date", Order: 1},
 		{AttributeName: "Name", ButtonText: "name", Order: 1},
@@ -304,23 +329,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	})
 	p.Filtering.Setup([]string{"Status"})
 
-	if !gFirstFun {
-		gDone <- true
-	}
-	gFirstFun = false
-	ticker := time.NewTicker(time.Second * 10)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				p.Reload()
-				p.Refresh()
-			case <-gDone:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	go Updater(ctx, p)
 
 	p.Reload()
 	p.Show(ctx, b, update.Message.Chat.ID)

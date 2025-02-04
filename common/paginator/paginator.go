@@ -31,11 +31,11 @@ type VirtualMethods interface {
 	HeaderString() string
 	FooterString() string
 	ItemString(i int) string
-	AttributeByName(i int, attributeName string) string
+	StringValueByName(item any, attributeName string) string
 	ItemContextActions(i int) []string
 	ItemActionExec(i int, actionKey string) (unselectItem bool)
 	LessItem(i int, j int, attributeName string) bool
-	Reload()
+	Reload() error
 }
 
 type Paginator struct {
@@ -77,6 +77,15 @@ func (p *Paginator) Alloc(l int) {
 func (p *Paginator) Append(item any) {
 	p.list = append(p.list, item)
 	p.index = append(p.index, len(p.list)-1)
+
+	for i := range p.Filtering.attributes {
+		attr := &p.Filtering.attributes[i]
+		value := p.virtual.StringValueByName(item, attr.AttributeName)
+		if _, ok := attr.State[value]; !ok {
+			attr.State[value] = false
+			attr.Values = append(attr.Values, value)
+		}
+	}
 }
 
 func (p *Paginator) Delete(i int) {
@@ -137,7 +146,7 @@ func (p *Paginator) FooterString() string {
 	return ""
 }
 
-func (p *Paginator) AttributeByName(i int, attributeName string) string {
+func (p *Paginator) StringValueByName(item any, attributeName string) string {
 	return ""
 }
 
@@ -153,10 +162,10 @@ func (p *Paginator) ItemActionExec(i int, actionKey string) (unselectItem bool) 
 	return true
 }
 
-func (p *Paginator) Reload() {
-	p.Filtering.ClassifyItems(p.virtual, p.Len())
+func (p *Paginator) Reload() error {
 	p.Filter()
 	p.Sort()
+	return nil
 }
 
 // ----------------------------------------
@@ -238,8 +247,8 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 			row = []models.InlineKeyboardButton{}
 			for j, val := range attr.Values {
 				row = append(row, models.InlineKeyboardButton{
-					Text:         []string{"", "✓"}[btoi(val.Enabled)] + val.Value,
-					CallbackData: p.prefix + CB_FILTER_BY + attr.AttributeName + "/" + val.Value,
+					Text:         []string{"", "✓"}[btoi(attr.State[val])] + val,
+					CallbackData: p.prefix + CB_FILTER_BY + attr.AttributeName + "/" + val,
 				})
 				if (j+1)%4 == 0 { // 4 buttons max
 					keyboard = append(keyboard, row)
@@ -345,13 +354,13 @@ func (p *Paginator) Refresh() {
 }
 
 func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-
+	
+	cmd := strings.TrimPrefix(update.CallbackQuery.Data, p.prefix)
 	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 		CallbackQueryID: update.CallbackQuery.ID,
+		Text:            cmd,
 		ShowAlert:       false,
 	})
-
-	var cmd = strings.TrimPrefix(update.CallbackQuery.Data, p.prefix)
 
 	if unicode.IsNumber(rune(cmd[0])) {
 		p.selectedItem, _ = strconv.Atoi(cmd)
@@ -381,9 +390,8 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			p.Sort()
 			p.selectedItem = -1
 		case CB_FILTER_BY:
-			var split = strings.Split(payload, "/")
-			var hdr = p.Filtering.Get(split[0], split[1])
-			hdr.Enabled = !hdr.Enabled
+			split := strings.Split(payload, "/")
+			p.Filtering.Toggle(split[0], split[1])
 			p.activePage = 0
 			p.selectedItem = -1
 			p.Filter()

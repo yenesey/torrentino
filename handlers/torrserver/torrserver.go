@@ -65,18 +65,20 @@ func (p *TorrserverPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *TorrserverPaginator) Reload() {
+func (p *TorrserverPaginator) Reload() error {
 
 	result, err := torrserver.List()
 	if err != nil {
 		utils.LogError(err)
+		return err
 	}
 
 	p.Alloc(len(*result))
 	for i := range *result {
 		p.Append(&(*result)[i])
 	}
-	p.Paginator.Reload()
+	
+	return p.Paginator.Reload()
 }
 
 // -------------------------------------------------------------------------
