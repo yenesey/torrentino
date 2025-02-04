@@ -295,21 +295,23 @@ func (p *ListPaginator) Reload() error {
 // -------------------------------------------------------------------------
 var Updater = func() func(ctx context.Context, p *ListPaginator) {
 	var (
-		cancel   context.CancelFunc
-		context2 context.Context
+		cancel     context.CancelFunc
+		updaterCtx context.Context
 	)
 	return func(ctx context.Context, p *ListPaginator) {
 		if cancel != nil {
 			cancel()
 		}
-		context2, cancel = context.WithCancel(ctx)
+		updaterCtx, cancel = context.WithCancel(ctx)
 		ticker := time.NewTicker(time.Second * 5)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ticker.C:
 				p.Reload()
 				p.Refresh()
-			case <-context2.Done():
+			case <-updaterCtx.Done():
 				ticker.Stop()
 				return
 			}
