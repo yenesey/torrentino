@@ -312,7 +312,6 @@ var Updater = func() func(ctx context.Context, p *ListPaginator) {
 				p.Reload()
 				p.Refresh()
 			case <-updaterCtx.Done():
-				ticker.Stop()
 				return
 			}
 		}
