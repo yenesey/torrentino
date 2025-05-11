@@ -3,7 +3,6 @@ package search
 import (
 	"context"
 	"net/http"
-	"net/url"
 	"strconv"
 
 	"github.com/antchfx/htmlquery"
@@ -238,11 +237,11 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 		}
 		return ""
 	}
-	parsedUrl, err := url.Parse(pageUrl)
-	if err != nil {
-		utils.LogError(err)
-		return ""
-	}
+	// _, err := url.Parse(pageUrl)
+	// if err != nil {
+	// 	utils.LogError(err)
+	// 	return ""
+	// }
 
 	doc, err := htmlquery.LoadURL(pageUrl)
 	if err != nil {
@@ -252,7 +251,7 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 
 	switch tracker {
 	case "rutor":
-		poster := htmlquery.Find(doc, "//table[@id=\"details\"]/*/tr/td[2]/*/img")
+		poster := htmlquery.Find(doc, "//*[@id=\"details\"]/*/tr[1]/td[2]/img")
 		if len(poster) > 0 {
 			if res := findKey(poster[0].Attr, "src"); res != "" {
 				return res
@@ -266,10 +265,10 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 			}
 		}
 	case "kinozal":
-		poster := htmlquery.Find(doc, "//body/div/div[3]/div[2]/div[1]/div[2]/ul/li[1]/a/img")
+		poster := htmlquery.Find(doc, "//*[@id=\"main\"]/div[2]/div[1]/div[2]/ul/li[1]/a/img")
 		if len(poster) > 0 {
 			if res := findKey(poster[0].Attr, "src"); res != "" {
-				return parsedUrl.Scheme + "://" + parsedUrl.Host + res
+				return res
 			}
 		}
 	}

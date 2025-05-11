@@ -77,7 +77,7 @@ func (p *TorrserverPaginator) Reload() error {
 	for i := range *result {
 		p.Append(&(*result)[i])
 	}
-	
+
 	return p.Paginator.Reload()
 }
 

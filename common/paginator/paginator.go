@@ -135,7 +135,11 @@ func (p *Paginator) pageBounds() (int, int) {
 // ----------part of VirtualMethods interface----------------
 func (p *Paginator) HeaderString() string {
 	var fromIndex, toIndex = p.pageBounds()
-	return "<b>results: " + strconv.Itoa(fromIndex+1) + "-" + strconv.Itoa(toIndex) + " of " + strconv.Itoa(p.Len()) + "</b>"
+	if fromIndex < toIndex {
+		return "<b>results: " + strconv.Itoa(fromIndex+1) + "-" + strconv.Itoa(toIndex) + " of " + strconv.Itoa(p.Len()) + "</b>"
+	} else {
+		return "<b>the list is empty</b>"
+	}
 }
 
 func (p *Paginator) ItemString(item int) string {
@@ -354,7 +358,7 @@ func (p *Paginator) Refresh() {
 }
 
 func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	
+
 	cmd := strings.TrimPrefix(update.CallbackQuery.Data, p.prefix)
 	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 		CallbackQueryID: update.CallbackQuery.ID,

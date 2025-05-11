@@ -37,6 +37,9 @@ func (f *FilteringState) Toggle(attributeName string, attributeValue string) {
 
 func (p *Paginator) Filter() {
 	// defer utils.TimeTrack(utils.Now(), "Filtering")
+	if len(p.Filtering.attributes) == 0 {
+		return
+	}
 	index := make([]int, 0, len(p.list))
 	for i := range p.list {	
 		keepItem := false
