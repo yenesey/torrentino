@@ -37,12 +37,9 @@ func (f *FilteringState) Toggle(attributeName string, attributeValue string) {
 
 func (p *Paginator) Filter() {
 	// defer utils.TimeTrack(utils.Now(), "Filtering")
-	if len(p.Filtering.attributes) == 0 {
-		return
-	}
 	index := make([]int, 0, len(p.list))
 	for i := range p.list {	
-		keepItem := false
+		keepItem := len(p.Filtering.attributes) == 0
 		for j := range p.Filtering.attributes {
 			attr := &p.Filtering.attributes[j]
 			// stringValue := reflect.Indirect(reflect.ValueOf(p.list[i])).FieldByName(attr.AttributeName).String()
