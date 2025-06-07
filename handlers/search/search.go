@@ -35,14 +35,12 @@ type FindPaginator struct {
 
 // ----------------------------------------
 func NewPaginator(query string) *FindPaginator {
-	var fp FindPaginator
-	fp = FindPaginator{
-		*paginator.New(&fp, "find", 4),
+	return &FindPaginator{
+		*paginator.New("find", 4),
 		query,
 		make(map[string]bool),
 		make(map[string]bool),
 	}
-	return &fp
 }
 
 func (p *FindPaginator) Item(i int) *ListItem {
@@ -111,7 +109,7 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *FindPaginator) ItemContextActions(i int) (result []string) {
+func (p *FindPaginator) Actions(i int) (result []string) {
 
 	item := p.Item(i)
 	if item.InfoHash == "" && item.Link != "" {
@@ -153,7 +151,7 @@ func (p *FindPaginator) ItemContextActions(i int) (result []string) {
 }
 
 // method overload
-func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bool) {
+func (p *FindPaginator) Execute(i int, actionKey string) (unselectItem bool) {
 
 	item := p.Item(i)
 

@@ -52,11 +52,9 @@ type ListPaginator struct {
 
 // ----------------------------------------
 func NewPaginator() *ListPaginator {
-	var p ListPaginator
-	p = ListPaginator{
-		*paginator.New(&p, "list", 4),
+	return &ListPaginator{
+		*paginator.New("list", 4),
 	}
-	return &p
 }
 
 func (p *ListPaginator) Item(i int) *ListItem {
@@ -105,7 +103,7 @@ func (p *ListPaginator) ItemString(i int) string {
 }
 
 // method overload
-func (p *ListPaginator) FooterString() string {
+func (p *ListPaginator) Footer() string {
 
 	fs := syscall.Statfs_t{}
 	err := syscall.Statfs(common.Settings.Download_dir, &fs)
@@ -159,7 +157,7 @@ func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *ListPaginator) ItemContextActions(i int) (result []string) {
+func (p *ListPaginator) Actions(i int) (result []string) {
 	item := p.Item(i)
 
 	switch item.Status {
@@ -175,7 +173,7 @@ func (p *ListPaginator) ItemContextActions(i int) (result []string) {
 }
 
 // method overload
-func (p *ListPaginator) ItemActionExec(i int, actionKey string) (unSelectItem bool) {
+func (p *ListPaginator) Execute(i int, actionKey string) (unSelectItem bool) {
 	var err error
 	item := p.Item(i)
 	switch actionKey {

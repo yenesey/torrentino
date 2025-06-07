@@ -43,7 +43,7 @@ func (p *Paginator) Filter() {
 		for j := range p.Filtering.attributes {
 			attr := &p.Filtering.attributes[j]
 			// stringValue := reflect.Indirect(reflect.ValueOf(p.list[i])).FieldByName(attr.AttributeName).String()
-			stringValue := p.virtual.StringValueByName(p.list[i], attr.AttributeName)
+			stringValue := Stringer(p).StringValueByName(p.list[i], attr.AttributeName)
 			keepItem = keepItem || attr.State[stringValue] || func() bool { //  exact filter on, or all filters is off
 				for _, state := range attr.State {
 					if state { return false }

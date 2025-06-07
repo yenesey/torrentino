@@ -75,10 +75,10 @@ func (p *Paginator) Less(i, j int) bool {
 	for _, k = range s.multyOrder {
 		h := &s.headers[k]
 		switch {
-		case p.virtual.LessItem(i, j, h.AttributeName):
+		case Comparator(p).Compare(i, j, h.AttributeName):
 			return h.Order == 2
 
-		case p.virtual.LessItem(j, i, h.AttributeName):
+		case Comparator(p).Compare(j, i, h.AttributeName):
 			return h.Order != 2
 		}
 		// i == j; try the next comparison.

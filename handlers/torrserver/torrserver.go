@@ -17,11 +17,9 @@ type TorrserverPaginator struct {
 
 // ----------------------------------------
 func NewPaginator() *TorrserverPaginator {
-	var p TorrserverPaginator
-	p = TorrserverPaginator{
-		*paginator.New(&p, "torrserver", 4),
+	return &TorrserverPaginator{
+		*paginator.New("torrserver", 4),
 	}
-	return &p
 }
 
 func (p *TorrserverPaginator) Item(i int) *torrserver.TSListItem {
@@ -36,12 +34,12 @@ func (p *TorrserverPaginator) ItemString(i int) string {
 }
 
 // method overload
-func (p *TorrserverPaginator) ItemContextActions(i int) []string {
+func (p *TorrserverPaginator) Actions(i int) []string {
 	return []string{"delete"}
 }
 
 // method overload
-func (p *TorrserverPaginator) ItemActionExec(i int, actionKey string) bool {
+func (p *TorrserverPaginator) Execute(i int, actionKey string) bool {
 	item := p.Item(i)
 	if actionKey == "delete" {
 		if err := torrserver.Delete(item.Hash); err == nil {
