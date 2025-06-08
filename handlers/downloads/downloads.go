@@ -62,7 +62,7 @@ func (p *ListPaginator) Item(i int) *ListItem {
 }
 
 // method overload
-func (p *ListPaginator) ItemString(i int) string {
+func (p *ListPaginator) Line(i int) string {
 	result := ""
 	item := p.Item(i)
 	if item.IsDir {
@@ -130,7 +130,7 @@ func (p *ListPaginator) Footer() string {
 }
 
 // method overload
-func (p *ListPaginator) StringValueByName(_item any, attributeName string) string {
+func (p *ListPaginator) ItemValue(_item any, attributeName string) string {
 	item := _item.(*ListItem)
 	if attributeName == "Status" {
 		return item.Status
@@ -139,7 +139,7 @@ func (p *ListPaginator) StringValueByName(_item any, attributeName string) strin
 }
 
 // method overload
-func (p *ListPaginator) LessItem(i int, j int, attributeKey string) bool {
+func (p *ListPaginator) Compare(i int, j int, attributeKey string) bool {
 	a := p.Item(i)
 	b := p.Item(j)
 
@@ -326,7 +326,9 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		{AttributeName: "IsDir", ButtonText: "dir", Order: 0},
 	})
 	p.Filtering.Setup([]string{"Status"})
-
+	p.Stringer = paginator.Stringer(p)
+	p.Executor = paginator.Executor(p)
+	p.Comparator = paginator.Comparator(p)
 	go Updater(ctx, p)
 
 	p.Reload()

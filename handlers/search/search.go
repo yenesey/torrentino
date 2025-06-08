@@ -48,7 +48,7 @@ func (p *FindPaginator) Item(i int) *ListItem {
 }
 
 // method overload
-func (p *FindPaginator) ItemString(i int) string {
+func (p *FindPaginator) Line(i int) string {
 
 	item := p.Item(i)
 	return item.Title +
@@ -78,7 +78,7 @@ func (p *FindPaginator) ItemString(i int) string {
 }
 
 // method overload
-func (p *FindPaginator) StringValueByName(_item any, attributeName string) string {
+func (p *FindPaginator) ItemValue(_item any, attributeName string) string {
 	item := _item.(*ListItem)
 	if attributeName == "TrackerId" {
 		return item.TrackerId
@@ -89,7 +89,7 @@ func (p *FindPaginator) StringValueByName(_item any, attributeName string) strin
 }
 
 // method overload
-func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
+func (p *FindPaginator) Compare(i int, j int, attributeKey string) bool {
 	a := p.Item(i)
 	b := p.Item(j)
 	switch attributeKey {

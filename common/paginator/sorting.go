@@ -8,9 +8,9 @@ import (
 var sortChars = [...]string{"", "▼", "▲"}
 
 type SortHeader struct {
-	AttributeName    string // attribute name in List items
-	ButtonText       string // button text
-	Order            int8   // 0 - unsorted, 1 - desc,  2 - asc
+	AttributeName string // attribute name in List items
+	ButtonText    string // button text
+	Order         int8   // 0 - unsorted, 1 - desc,  2 - asc
 }
 
 type SortingState struct {
@@ -75,10 +75,10 @@ func (p *Paginator) Less(i, j int) bool {
 	for _, k = range s.multyOrder {
 		h := &s.headers[k]
 		switch {
-		case Comparator(p).Compare(i, j, h.AttributeName):
+		case p.Comparator.Compare(i, j, h.AttributeName):
 			return h.Order == 2
 
-		case Comparator(p).Compare(j, i, h.AttributeName):
+		case p.Comparator.Compare(j, i, h.AttributeName):
 			return h.Order != 2
 		}
 		// i == j; try the next comparison.

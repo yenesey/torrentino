@@ -27,7 +27,7 @@ func (p *TorrserverPaginator) Item(i int) *torrserver.TSListItem {
 }
 
 // method overload
-func (p *TorrserverPaginator) ItemString(i int) string {
+func (p *TorrserverPaginator) Line(i int) string {
 	item := p.Item(i)
 	return item.Title +
 		" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
@@ -52,7 +52,7 @@ func (p *TorrserverPaginator) Execute(i int, actionKey string) bool {
 }
 
 // method overload
-func (p *TorrserverPaginator) LessItem(i int, j int, attributeKey string) bool {
+func (p *TorrserverPaginator) Compare(i int, j int, attributeKey string) bool {
 	a := p.Item(i)
 	b := p.Item(j)
 	switch attributeKey {

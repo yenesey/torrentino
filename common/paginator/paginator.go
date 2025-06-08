@@ -24,20 +24,25 @@ const (
 	CB_STUB           = "stub"
 )
 
-var callbackHandler map[string]string = make(map[string]string)
+var Handlers map[string]string = make(map[string]string)
+
+type Lister interface {
+}
+
+type List struct {
+}
 
 // ----------------------------------------
 type Stringer interface {
 	Header() string
 	Footer() string
-	ItemString(i int) string
-	StringValueByName(item any, attributeName string) string
+	Line(i int) string
+	ItemValue(item any, attributeName string) string
 	Actions(i int) []string
 }
 
 type Executor interface {
 	Execute(i int, actionKey string) (unselectItem bool)
-	Reload() error
 }
 
 type Comparator interface {
@@ -47,12 +52,14 @@ type Comparator interface {
 type Paginator struct {
 	list  []any
 	index []int
-
+	Stringer
+	Executor
+	Comparator
 	Sorting   SortingState
 	Filtering FilteringState
 
-	Ctx     context.Context
 	Bot     *bot.Bot
+	Ctx     context.Context
 	Message *models.Message
 
 	extControlsVisible bool
@@ -84,7 +91,7 @@ func (p *Paginator) Append(item any) {
 
 	for i := range p.Filtering.attributes {
 		attr := &p.Filtering.attributes[i]
-		value := Stringer(p).StringValueByName(item, attr.AttributeName)
+		value := Stringer(p).ItemValue(item, attr.AttributeName)
 		if _, ok := attr.State[value]; !ok {
 			attr.State[value] = false
 			attr.Values = append(attr.Values, value)
@@ -146,7 +153,7 @@ func (p *Paginator) Header() string {
 	}
 }
 
-func (p *Paginator) ItemString(item int) string {
+func (p *Paginator) Line(item int) string {
 	return ""
 }
 
@@ -154,7 +161,7 @@ func (p *Paginator) Footer() string {
 	return ""
 }
 
-func (p *Paginator) StringValueByName(item any, attributeName string) string {
+func (p *Paginator) ItemValue(item any, attributeName string) string {
 	return ""
 }
 
@@ -183,22 +190,22 @@ func (p *Paginator) buildText() string {
 	hr := "\n<b>⸻⸻⸻⸻⸻</b>\n"
 	br := "\n\n"
 
-	text = text + Stringer(p).Header() + hr
+	text = text + p.Stringer.Header() + hr
 	fromIndex, toIndex := p.pageBounds()
 	for i := fromIndex; i < toIndex; i++ {
 		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " +
 			(func() string {
 				if p.selectedItem == i {
-					return "<u>" + Stringer(p).ItemString(i) + "</u>"
+					return "<u>" + p.Stringer.Line(i) + "</u>"
 				} else {
-					return Stringer(p).ItemString(i)
+					return p.Stringer.Line(i)
 				}
 			})()
 		if i < toIndex-1 {
 			text = text + br
 		}
 	}
-	footer := Stringer(p).Footer()
+	footer := p.Stringer.Footer()
 	if len(footer) > 0 {
 		text = text + hr + "<b>" + footer + "</b>"
 	}
@@ -281,7 +288,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 	if !p.extControlsVisible && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
 		row = []models.InlineKeyboardButton{}
-		for i, action := range Stringer(p).Actions(p.selectedItem) {
+		for i, action := range p.Stringer.Actions(p.selectedItem) {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         action,
 				CallbackData: p.prefix + CB_ACTION + action,
@@ -300,10 +307,10 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) {
 
-	if callbackHandlerID, ok := callbackHandler[p.prefix]; ok {
+	if callbackHandlerID, ok := Handlers[p.prefix]; ok {
 		b.UnregisterHandler(callbackHandlerID)
 	}
-	callbackHandler[p.prefix] = b.RegisterHandler(bot.HandlerTypeCallbackQueryData, p.prefix, bot.MatchTypePrefix, p.callbackHandler)
+	Handlers[p.prefix] = b.RegisterHandler(bot.HandlerTypeCallbackQueryData, p.prefix, bot.MatchTypePrefix, p.callbackHandler)
 
 	p.Ctx = ctx
 	p.Bot = b
@@ -406,7 +413,7 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			p.Sort()
 		case CB_ACTION:
 			if p.selectedItem != -1 {
-				if Executor(p).Execute(p.selectedItem, payload) {
+				if p.Executor.Execute(p.selectedItem, payload) {
 					p.selectedItem = -1
 				}
 			}
