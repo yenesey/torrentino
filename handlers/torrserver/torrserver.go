@@ -17,9 +17,11 @@ type TorrserverPaginator struct {
 
 // ----------------------------------------
 func NewPaginator() *TorrserverPaginator {
-	return &TorrserverPaginator{
-		*paginator.New("torrserver", 4),
+	var p TorrserverPaginator
+	p = TorrserverPaginator{
+		*paginator.New("torrserver", 4, &p, &p),
 	}
+	return &p
 }
 
 func (p *TorrserverPaginator) Item(i int) *torrserver.TSListItem {

@@ -1,3 +1,5 @@
+// TODO: Reload in all handlers - err handling
+
 package paginator
 
 import (
@@ -26,23 +28,18 @@ const (
 var Handlers map[string]string = make(map[string]string)
 
 // ----------------------------------------
-type Stringer interface {
+type Builder interface {
 	Header() string
 	Footer() string
 	Line(i int) string
 	Actions(i int) []string
-}
-
-type Executor interface {
 	Execute(i int, actionKey string) (unselectItem bool)
 }
-
 
 type Paginator struct {
 	List
 
-	Stringer
-	Executor
+	Builder
 
 	Bot     *bot.Bot
 	Ctx     context.Context
@@ -58,12 +55,15 @@ type Paginator struct {
 	keyboard models.InlineKeyboardMarkup
 }
 
-func New(prefix string, itemsPerPage int) *Paginator {
-	return &Paginator{
+func New(prefix string, itemsPerPage int, builder Builder, comparator Comparator) *Paginator {
+	p := &Paginator{
 		itemsPerPage: itemsPerPage,
 		prefix:       prefix,
 		selectedItem: -1,
 	}
+	p.Builder = builder
+	p.List.Comparator = comparator
+	return p
 }
 
 func (p *Paginator) Item(i int) any {
@@ -104,7 +104,7 @@ func (p *Paginator) pageBounds() (int, int) {
 	return fromIndex, toIndex
 }
 
-// ----------part of VirtualMethods interface----------------
+// ----------"Builder" interface----------------
 func (p *Paginator) Header() string {
 	var fromIndex, toIndex = p.pageBounds()
 	if fromIndex < toIndex {
@@ -122,10 +122,6 @@ func (p *Paginator) Line(item int) string {
 	return ""
 }
 
-func (p *Paginator) Compare(i int, j int, attributeName string) bool {
-	return false
-}
-
 func (p *Paginator) Actions(i int) []string {
 	return nil
 }
@@ -133,36 +129,37 @@ func (p *Paginator) Actions(i int) []string {
 func (p *Paginator) Execute(i int, actionKey string) (unselectItem bool) {
 	return true
 }
+// ----------END "Builder" interface----------------
 
-func (p *Paginator) Reload() error {
+
+func (p *Paginator) Reload() error { //todo: maybe move to List
 	p.Filter()
 	p.Sort()
 	return nil
 }
 
-// ----------------------------------------
 func (p *Paginator) buildText() string {
 
 	var text string
 	hr := "\n<b>⸻⸻⸻⸻⸻</b>\n"
 	br := "\n\n"
 
-	text = text + p.Stringer.Header() + hr
+	text = text + p.Builder.Header() + hr
 	fromIndex, toIndex := p.pageBounds()
 	for i := fromIndex; i < toIndex; i++ {
 		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " +
 			(func() string {
 				if p.selectedItem == i {
-					return "<u>" + p.Stringer.Line(i) + "</u>"
+					return "<u>" + p.Builder.Line(i) + "</u>"
 				} else {
-					return p.Stringer.Line(i)
+					return p.Builder.Line(i)
 				}
 			})()
 		if i < toIndex-1 {
 			text = text + br
 		}
 	}
-	footer := p.Stringer.Footer()
+	footer := p.Builder.Footer()
 	if len(footer) > 0 {
 		text = text + hr + "<b>" + footer + "</b>"
 	}
@@ -245,7 +242,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 	if !p.extControlsVisible && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
 		row = []models.InlineKeyboardButton{}
-		for i, action := range p.Stringer.Actions(p.selectedItem) {
+		for i, action := range p.Builder.Actions(p.selectedItem) {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         action,
 				CallbackData: p.prefix + CB_ACTION + action,
@@ -370,7 +367,7 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			p.Sort()
 		case CB_ACTION:
 			if p.selectedItem != -1 {
-				if p.Executor.Execute(p.selectedItem, payload) {
+				if p.Builder.Execute(p.selectedItem, payload) {
 					p.selectedItem = -1
 				}
 			}

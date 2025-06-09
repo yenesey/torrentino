@@ -52,9 +52,11 @@ type ListPaginator struct {
 
 // ----------------------------------------
 func NewPaginator() *ListPaginator {
-	return &ListPaginator{
-		*paginator.New("list", 4),
+	var p ListPaginator
+	p = ListPaginator{
+		*paginator.New("list", 4, &p, &p),
 	}
+	return &p
 }
 
 func (p *ListPaginator) Item(i int) *ListItem {
@@ -326,9 +328,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		{AttributeName: "IsDir", ButtonText: "dir", Order: 0},
 	})
 	p.Filtering.Setup([]string{"Status"})
-	p.Stringer = paginator.Stringer(p)
-	p.Executor = paginator.Executor(p)
-	p.List.Comparator = paginator.Comparator(p)
+	
 	go Updater(ctx, p)
 
 	p.Reload()

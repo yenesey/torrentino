@@ -104,3 +104,7 @@ func (ls *List) Less(i, j int) bool {
 	}
 	return false
 }
+
+func (ls *List) Compare(i int, j int, attributeName string) bool {
+	return false
+}

@@ -35,12 +35,14 @@ type FindPaginator struct {
 
 // ----------------------------------------
 func NewPaginator(query string) *FindPaginator {
-	return &FindPaginator{
-		*paginator.New("find", 4),
+	var p FindPaginator
+	p = FindPaginator{
+		*paginator.New("find", 4, &p, &p),
 		query,
 		make(map[string]bool),
 		make(map[string]bool),
 	}
+	return &p
 }
 
 func (p *FindPaginator) Item(i int) *ListItem {
