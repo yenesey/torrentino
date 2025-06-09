@@ -3,7 +3,6 @@ package paginator
 import (
 	"context"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -26,18 +25,11 @@ const (
 
 var Handlers map[string]string = make(map[string]string)
 
-type Lister interface {
-}
-
-type List struct {
-}
-
 // ----------------------------------------
 type Stringer interface {
 	Header() string
 	Footer() string
 	Line(i int) string
-	ItemValue(item any, attributeName string) string
 	Actions(i int) []string
 }
 
@@ -45,18 +37,12 @@ type Executor interface {
 	Execute(i int, actionKey string) (unselectItem bool)
 }
 
-type Comparator interface {
-	Compare(i int, j int, attributeName string) bool
-}
 
 type Paginator struct {
-	list  []any
-	index []int
+	List
+
 	Stringer
 	Executor
-	Comparator
-	Sorting   SortingState
-	Filtering FilteringState
 
 	Bot     *bot.Bot
 	Ctx     context.Context
@@ -78,31 +64,6 @@ func New(prefix string, itemsPerPage int) *Paginator {
 		prefix:       prefix,
 		selectedItem: -1,
 	}
-}
-
-func (p *Paginator) Alloc(l int) {
-	p.list = make([]any, 0, l)
-	p.index = make([]int, 0, l)
-}
-
-func (p *Paginator) Append(item any) {
-	p.list = append(p.list, item)
-	p.index = append(p.index, len(p.list)-1)
-
-	for i := range p.Filtering.attributes {
-		attr := &p.Filtering.attributes[i]
-		value := Stringer(p).ItemValue(item, attr.AttributeName)
-		if _, ok := attr.State[value]; !ok {
-			attr.State[value] = false
-			attr.Values = append(attr.Values, value)
-		}
-	}
-}
-
-func (p *Paginator) Delete(i int) {
-	idx := p.index[i]
-	p.list = slices.Delete(p.list, idx, idx+1) // p.list = append(p.list[:idx], p.list[idx+1:]...)
-	p.Filter()                                 // <-- just for rebuild the indexes
 }
 
 func (p *Paginator) Item(i int) any {
@@ -153,15 +114,11 @@ func (p *Paginator) Header() string {
 	}
 }
 
-func (p *Paginator) Line(item int) string {
-	return ""
-}
-
 func (p *Paginator) Footer() string {
 	return ""
 }
 
-func (p *Paginator) ItemValue(item any, attributeName string) string {
+func (p *Paginator) Line(item int) string {
 	return ""
 }
 

@@ -130,7 +130,7 @@ func (p *ListPaginator) Footer() string {
 }
 
 // method overload
-func (p *ListPaginator) ItemValue(_item any, attributeName string) string {
+func (p *ListPaginator) Value(_item any, attributeName string) string {
 	item := _item.(*ListItem)
 	if attributeName == "Status" {
 		return item.Status
@@ -328,7 +328,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	p.Filtering.Setup([]string{"Status"})
 	p.Stringer = paginator.Stringer(p)
 	p.Executor = paginator.Executor(p)
-	p.Comparator = paginator.Comparator(p)
+	p.List.Comparator = paginator.Comparator(p)
 	go Updater(ctx, p)
 
 	p.Reload()

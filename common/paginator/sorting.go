@@ -2,7 +2,6 @@ package paginator
 
 import (
 	"slices"
-	"sort"
 )
 
 var sortChars = [...]string{"", "▼", "▲"}
@@ -51,37 +50,4 @@ func (s *SortingState) ToggleKey(attributeKey string) {
 		idx := slices.Index(s.multyOrder, i)
 		s.multyOrder = slices.Delete(s.multyOrder, idx, idx+1)
 	}
-}
-
-// -------------------------------------------------------------
-func (p *Paginator) Sort() {
-	sort.Sort(p)
-}
-
-// part of sort.Interface
-func (p *Paginator) Len() int {
-	return len(p.index)
-}
-
-// part of sort.Interface
-func (p *Paginator) Swap(i, j int) {
-	p.index[i], p.index[j] = p.index[j], p.index[i]
-}
-
-// part of sort.Interface
-func (p *Paginator) Less(i, j int) bool {
-	s := &p.Sorting
-	var k int
-	for _, k = range s.multyOrder {
-		h := &s.headers[k]
-		switch {
-		case p.Comparator.Compare(i, j, h.AttributeName):
-			return h.Order == 2
-
-		case p.Comparator.Compare(j, i, h.AttributeName):
-			return h.Order != 2
-		}
-		// i == j; try the next comparison.
-	}
-	return false
 }
