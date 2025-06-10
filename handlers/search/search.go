@@ -3,7 +3,6 @@ package search
 import (
 	"context"
 	"net/http"
-	"net/url"
 	"strconv"
 
 	"github.com/antchfx/htmlquery"
@@ -35,15 +34,15 @@ type FindPaginator struct {
 }
 
 // ----------------------------------------
-func NewPaginator(query string) *FindPaginator {
-	var fp FindPaginator
-	fp = FindPaginator{
-		*paginator.New(&fp, "find", 4),
-		query,
+func NewPaginator(ctx context.Context, b *bot.Bot, update *models.Update) *FindPaginator {
+	var p FindPaginator
+	p = FindPaginator{
+		*paginator.New(ctx, b, update, "find", 4, &p, &p, &p),
+		update.Message.Text,
 		make(map[string]bool),
 		make(map[string]bool),
 	}
-	return &fp
+	return &p
 }
 
 func (p *FindPaginator) Item(i int) *ListItem {
@@ -51,7 +50,7 @@ func (p *FindPaginator) Item(i int) *ListItem {
 }
 
 // method overload
-func (p *FindPaginator) ItemString(i int) string {
+func (p *FindPaginator) Line(i int) string {
 
 	item := p.Item(i)
 	return item.Title +
@@ -81,8 +80,8 @@ func (p *FindPaginator) ItemString(i int) string {
 }
 
 // method overload
-func (p *FindPaginator) StringValueByName(_item any, attributeName string) string {
-	item := _item.(*ListItem)
+func (p *FindPaginator) Stringify(i int, attributeName string) string {
+	item := p.Item(i)
 	if attributeName == "TrackerId" {
 		return item.TrackerId
 	} else if attributeName == "TrackerType" {
@@ -92,10 +91,10 @@ func (p *FindPaginator) StringValueByName(_item any, attributeName string) strin
 }
 
 // method overload
-func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
+func (p *FindPaginator) Compare(i int, j int, attribute string) bool {
 	a := p.Item(i)
 	b := p.Item(j)
-	switch attributeKey {
+	switch attribute {
 	case "Size":
 		return a.Size < b.Size
 	case "Seeders":
@@ -112,7 +111,7 @@ func (p *FindPaginator) LessItem(i int, j int, attributeKey string) bool {
 }
 
 // method overload
-func (p *FindPaginator) ItemContextActions(i int) (result []string) {
+func (p *FindPaginator) Actions(i int) (result []string) {
 
 	item := p.Item(i)
 	if item.InfoHash == "" && item.Link != "" {
@@ -154,7 +153,7 @@ func (p *FindPaginator) ItemContextActions(i int) (result []string) {
 }
 
 // method overload
-func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bool) {
+func (p *FindPaginator) Execute(i int, action string)  (unselect bool) {
 
 	item := p.Item(i)
 
@@ -166,7 +165,7 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bo
 	}
 
 	var err error
-	switch actionKey {
+	switch action {
 	case "download":
 		if _, err = transmission.Add(urlOrMagnet); err == nil {
 			item.InTorrents = true
@@ -192,7 +191,7 @@ func (p *FindPaginator) ItemActionExec(i int, actionKey string) (unselectItem bo
 	return true
 }
 
-// method overload
+
 func (p *FindPaginator) Reload() error {
 
 	result, err := jackett.Query(p.query, common.Settings.Jackett.Indexers)
@@ -224,7 +223,8 @@ func (p *FindPaginator) Reload() error {
 		hash := (*result)[i].InfoHash
 		p.Append(&ListItem{(*result)[i], p.transmissionHashes[hash], p.torrserverHashes[hash]})
 	}
-	return p.Paginator.Reload()
+	return nil
+
 }
 
 // -------------------------------------------------------------------------
@@ -238,11 +238,11 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 		}
 		return ""
 	}
-	parsedUrl, err := url.Parse(pageUrl)
-	if err != nil {
-		utils.LogError(err)
-		return ""
-	}
+	// _, err := url.Parse(pageUrl)
+	// if err != nil {
+	// 	utils.LogError(err)
+	// 	return ""
+	// }
 
 	doc, err := htmlquery.LoadURL(pageUrl)
 	if err != nil {
@@ -252,7 +252,7 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 
 	switch tracker {
 	case "rutor":
-		poster := htmlquery.Find(doc, "//table[@id=\"details\"]/*/tr/td[2]/*/img")
+		poster := htmlquery.Find(doc, "//*[@id=\"details\"]/*/tr[1]/td[2]/img")
 		if len(poster) > 0 {
 			if res := findKey(poster[0].Attr, "src"); res != "" {
 				return res
@@ -266,10 +266,10 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 			}
 		}
 	case "kinozal":
-		poster := htmlquery.Find(doc, "//body/div/div[3]/div[2]/div[1]/div[2]/ul/li[1]/a/img")
+		poster := htmlquery.Find(doc, "//*[@id=\"main\"]/div[2]/div[1]/div[2]/ul/li[1]/a/img")
 		if len(poster) > 0 {
 			if res := findKey(poster[0].Attr, "src"); res != "" {
-				return parsedUrl.Scheme + "://" + parsedUrl.Host + res
+				return res
 			}
 		}
 	}
@@ -278,22 +278,17 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 }
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	var p = NewPaginator(update.Message.Text)
-	p.Sorting.Setup([]paginator.SortHeader{
-		{AttributeName: "Size", ButtonText: "size", Order: 1},
-		{AttributeName: "Seeders", ButtonText: "seeds", Order: 1},
-		{AttributeName: "Peers", ButtonText: "peers", Order: 0},
-		{AttributeName: "Link", ButtonText: "file", Order: 0},
+	var p = NewPaginator(ctx, b, update)
+	p.Sorting.Setup([]paginator.SortingHeader{
+		{Attribute: "Size", ButtonText: "size", Order: 1},
+		{Attribute: "Seeders", ButtonText: "seeds", Order: 1},
+		{Attribute: "Peers", ButtonText: "peers", Order: 0},
+		{Attribute: "Link", ButtonText: "file", Order: 0},
 	})
 	p.Filtering.Setup([]string{"TrackerId"})
 	if err := p.Reload(); err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:      update.Message.Chat.ID,
-			Text:        err.Error(),
-			ParseMode:   models.ParseModeHTML,
-			ReplyMarkup: nil,
-		})
+		p.ReplyMessage(err.Error())
 	} else {
-		p.Show(ctx, b, update.Message.Chat.ID)
+		p.Show()
 	}
 }
