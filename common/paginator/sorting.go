@@ -2,86 +2,52 @@ package paginator
 
 import (
 	"slices"
-	"sort"
 )
 
 var sortChars = [...]string{"", "▼", "▲"}
 
-type SortHeader struct {
-	AttributeName    string // attribute name in List items
-	ButtonText       string // button text
-	Order            int8   // 0 - unsorted, 1 - desc,  2 - asc
+type SortingHeader struct {
+	Attribute  string // attribute name in List items
+	ButtonText string // button text
+	Order      int8   // 0 - unsorted, 1 - desc,  2 - asc
 }
 
-type SortingState struct {
-	headers    []SortHeader
-	multyOrder []int
+type Sorting struct {
+	headers []SortingHeader
+	queue []int
 }
 
-func (s *SortingState) Setup(headers []SortHeader) {
+func (s *Sorting) Setup(headers []SortingHeader) {
 	s.headers = headers
-	s.multyOrder = make([]int, 0, len(s.headers))
+	s.queue = make([]int, 0, len(s.headers))
 	for i := range s.headers {
 		if s.headers[i].Order != 0 {
-			s.multyOrder = append(s.multyOrder, i)
+			s.queue = append(s.queue, i)
 		}
 	}
 }
 
-func (s *SortingState) GetHeader(attributeKey string) (h *SortHeader, i int) {
+func (s *Sorting) GetHeader(attribute string) (h *SortingHeader, i int) {
 	for i := range s.headers {
-		if s.headers[i].AttributeName == attributeKey {
+		if s.headers[i].Attribute == attribute {
 			return &s.headers[i], i
 		}
 	}
 	return nil, -1
 }
 
-func (s *SortingState) ToggleKey(attributeKey string) {
+func (s *Sorting) ToggleAttribute(attribute string) {
 
-	var h, i = s.GetHeader(attributeKey)
+	var h, i = s.GetHeader(attribute)
 	switch h.Order {
 	case 0:
 		h.Order = 1
-		s.multyOrder = append(s.multyOrder, i)
+		s.queue = append(s.queue, i)
 	case 1:
 		h.Order = 2
 	case 2:
 		h.Order = 0
-		idx := slices.Index(s.multyOrder, i)
-		s.multyOrder = slices.Delete(s.multyOrder, idx, idx+1)
+		idx := slices.Index(s.queue, i)
+		s.queue = slices.Delete(s.queue, idx, idx+1)
 	}
-}
-
-// -------------------------------------------------------------
-func (p *Paginator) Sort() {
-	sort.Sort(p)
-}
-
-// part of sort.Interface
-func (p *Paginator) Len() int {
-	return len(p.index)
-}
-
-// part of sort.Interface
-func (p *Paginator) Swap(i, j int) {
-	p.index[i], p.index[j] = p.index[j], p.index[i]
-}
-
-// part of sort.Interface
-func (p *Paginator) Less(i, j int) bool {
-	s := &p.Sorting
-	var k int
-	for _, k = range s.multyOrder {
-		h := &s.headers[k]
-		switch {
-		case p.virtual.LessItem(i, j, h.AttributeName):
-			return h.Order == 2
-
-		case p.virtual.LessItem(j, i, h.AttributeName):
-			return h.Order != 2
-		}
-		// i == j; try the next comparison.
-	}
-	return false
 }

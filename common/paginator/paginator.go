@@ -3,7 +3,6 @@ package paginator
 import (
 	"context"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -24,83 +23,93 @@ const (
 	CB_STUB           = "stub"
 )
 
-var callbackHandler map[string]string = make(map[string]string)
+var Handlers map[string]string = make(map[string]string)
 
 // ----------------------------------------
-type VirtualMethods interface {
-	HeaderString() string
-	FooterString() string
-	ItemString(i int) string
-	StringValueByName(item any, attributeName string) string
-	ItemContextActions(i int) []string
-	ItemActionExec(i int, actionKey string) (unselectItem bool)
-	LessItem(i int, j int, attributeName string) bool
-	Reload() error
+type Builder interface {
+	Header() string
+	Footer() string
+	Line(i int) string
+}
+
+type Actor interface {
+	Actions(i int) []string
+	Execute(i int, action string) (unselect bool)
 }
 
 type Paginator struct {
-	virtual VirtualMethods
-	list    []any
-	index   []int
+	List
 
-	Sorting   SortingState
-	Filtering FilteringState
+	Builder
+	Actor
 
-	Ctx     context.Context
-	Bot     *bot.Bot
-	Message *models.Message
+	bot     *bot.Bot
+	ctx     context.Context
+	message *models.Message
+	update  *models.Update
 
-	extControlsVisible bool
-	activePage         int
-	itemsPerPage       int
-	selectedItem       int
+	extControls  bool
+	activePage   int
+	itemsPerPage int
+	selectedItem int
 
 	prefix   string
 	text     string
 	keyboard models.InlineKeyboardMarkup
 }
 
-func New(virtualMethods VirtualMethods, prefix string, itemsPerPage int) *Paginator {
-	return &Paginator{
-		virtual:      virtualMethods,
+func New(
+	ctx context.Context, b *bot.Bot, update *models.Update,
+	prefix string, itemsPerPage int, builder Builder, actor Actor, evaluator Evaluator,
+) *Paginator {
+	p := &Paginator{
+		ctx:          ctx,
+		bot:          b,
+		update:       update,
 		itemsPerPage: itemsPerPage,
 		prefix:       prefix,
 		selectedItem: -1,
 	}
+	p.Builder = builder
+	p.Actor = actor
+	p.List.Evaluator = evaluator
+	return p
 }
 
-func (p *Paginator) Alloc(l int) {
-	p.list = make([]any, 0, l)
-	p.index = make([]int, 0, l)
-}
-
-func (p *Paginator) Append(item any) {
-	p.list = append(p.list, item)
-	p.index = append(p.index, len(p.list)-1)
-
-	for i := range p.Filtering.attributes {
-		attr := &p.Filtering.attributes[i]
-		value := p.virtual.StringValueByName(item, attr.AttributeName)
-		if _, ok := attr.State[value]; !ok {
-			attr.State[value] = false
-			attr.Values = append(attr.Values, value)
-		}
+// ----------"Builder" interface----------------
+func (p *Paginator) Header() string {
+	var fromIndex, toIndex = p.pageBounds()
+	if fromIndex < toIndex {
+		return "<b>results: " + strconv.Itoa(fromIndex+1) + "-" + strconv.Itoa(toIndex) + " of " + strconv.Itoa(p.Len()) + "</b>"
+	} else {
+		return "<b>the list is empty</b>"
 	}
 }
 
-func (p *Paginator) Delete(i int) {
-	idx := p.index[i]
-	p.list = slices.Delete(p.list, idx, idx+1) // p.list = append(p.list[:idx], p.list[idx+1:]...)
-	p.Filter()                                 // <-- just for rebuild the indexes
+func (p *Paginator) Footer() string {
+	return ""
 }
 
-func (p *Paginator) Item(i int) any {
-	return p.list[p.index[i]]
+func (p *Paginator) Line(item int) string {
+	return ""
 }
+
+// ----------END "Builder" interface----------------
+
+// ----------"Actor" interface----------------
+func (p *Paginator) Actions(i int) []string {
+	return nil
+}
+
+func (p *Paginator) Execute(i int, actionKey string) (unselectItem bool) {
+	return true
+}
+
+// ----------END "Actor" interface----------------
 
 func (p *Paginator) ReplyMessage(text string) {
-	_, err := p.Bot.SendMessage(p.Ctx, &bot.SendMessageParams{
-		ChatID:      p.Message.Chat.ID,
+	_, err := p.bot.SendMessage(p.ctx, &bot.SendMessageParams{
+		ChatID:      p.message.Chat.ID,
 		Text:        text,
 		ParseMode:   models.ParseModeHTML,
 		ReplyMarkup: nil,
@@ -111,8 +120,8 @@ func (p *Paginator) ReplyMessage(text string) {
 }
 
 func (p *Paginator) ReplyDocument(doc *models.InputFileUpload) {
-	_, err := p.Bot.SendDocument(p.Ctx, &bot.SendDocumentParams{
-		ChatID:      p.Message.Chat.ID,
+	_, err := p.bot.SendDocument(p.ctx, &bot.SendDocumentParams{
+		ChatID:      p.message.Chat.ID,
 		Document:    doc,
 		ParseMode:   models.ParseModeHTML,
 		ReplyMarkup: nil,
@@ -132,69 +141,28 @@ func (p *Paginator) pageBounds() (int, int) {
 	return fromIndex, toIndex
 }
 
-// ----------part of VirtualMethods interface----------------
-func (p *Paginator) HeaderString() string {
-	var fromIndex, toIndex = p.pageBounds()
-	if fromIndex < toIndex {
-		return "<b>results: " + strconv.Itoa(fromIndex+1) + "-" + strconv.Itoa(toIndex) + " of " + strconv.Itoa(p.Len()) + "</b>"
-	} else {
-		return "<b>the list is empty</b>"
-	}
-}
-
-func (p *Paginator) ItemString(item int) string {
-	return ""
-}
-
-func (p *Paginator) FooterString() string {
-	return ""
-}
-
-func (p *Paginator) StringValueByName(item any, attributeName string) string {
-	return ""
-}
-
-func (p *Paginator) LessItem(i int, j int, attributeName string) bool {
-	return false
-}
-
-func (p *Paginator) ItemContextActions(i int) []string {
-	return nil
-}
-
-func (p *Paginator) ItemActionExec(i int, actionKey string) (unselectItem bool) {
-	return true
-}
-
-func (p *Paginator) Reload() error {
-	p.Filter()
-	p.Sort()
-	return nil
-}
-
-// ----------------------------------------
 func (p *Paginator) buildText() string {
 
 	var text string
 	hr := "\n<b>⸻⸻⸻⸻⸻</b>\n"
 	br := "\n\n"
 
-	text = text + p.virtual.HeaderString() + hr
+	text = text + p.Builder.Header() + hr
 	fromIndex, toIndex := p.pageBounds()
 	for i := fromIndex; i < toIndex; i++ {
 		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " +
 			(func() string {
 				if p.selectedItem == i {
-					return "<u>" + p.virtual.ItemString(i) + "</u>"
+					return "<u>" + p.Builder.Line(i) + "</u>"
 				} else {
-					return p.virtual.ItemString(i)
+					return p.Builder.Line(i)
 				}
 			})()
 		if i < toIndex-1 {
 			text = text + br
 		}
 	}
-	footer := p.virtual.FooterString()
+	footer := p.Builder.Footer()
 	if len(footer) > 0 {
 		text = text + hr + "<b>" + footer + "</b>"
 	}
@@ -235,12 +203,12 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 		keyboard = append(keyboard, row)
 	}
 
-	if p.extControlsVisible {
+	if p.extControls {
 		row = []models.InlineKeyboardButton{}
 		for _, v := range p.Sorting.headers {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         v.ButtonText + sortChars[int(v.Order)],
-				CallbackData: p.prefix + CB_ORDER_BY + v.AttributeName,
+				CallbackData: p.prefix + CB_ORDER_BY + v.Attribute,
 			})
 		}
 		if len(row) > 0 {
@@ -251,8 +219,8 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 			row = []models.InlineKeyboardButton{}
 			for j, val := range attr.Values {
 				row = append(row, models.InlineKeyboardButton{
-					Text:         []string{"", "✓"}[btoi(attr.State[val])] + val,
-					CallbackData: p.prefix + CB_FILTER_BY + attr.AttributeName + "/" + val,
+					Text:         []string{"", "✓"}[btoi(attr.States[val])] + val,
+					CallbackData: p.prefix + CB_FILTER_BY + attr.Attribute + "/" + val,
 				})
 				if (j+1)%4 == 0 { // 4 buttons max
 					keyboard = append(keyboard, row)
@@ -268,16 +236,16 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 	row = []models.InlineKeyboardButton{
 		chooseButton(p.activePage > 0,
 			[2]buttonData{{"⬅", p.prefix + CB_PREV_PAGE}, {"-", p.prefix + CB_STUB}}),
-		chooseButton(p.extControlsVisible,
+		chooseButton(p.extControls,
 			[2]buttonData{{"🔺", p.prefix + CB_TOGGLE_FILTERS}, {"🔻", p.prefix + CB_TOGGLE_FILTERS}}),
 		chooseButton(p.activePage < ((p.Len()-1)/p.itemsPerPage),
 			[2]buttonData{{"➡", p.prefix + CB_NEXT_PAGE}, {"-", p.prefix + CB_STUB}}),
 	}
 	keyboard = append(keyboard, row)
 
-	if !p.extControlsVisible && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
+	if !p.extControls && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
 		row = []models.InlineKeyboardButton{}
-		for i, action := range p.virtual.ItemContextActions(p.selectedItem) {
+		for i, action := range p.Actor.Actions(p.selectedItem) {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         action,
 				CallbackData: p.prefix + CB_ACTION + action,
@@ -294,21 +262,21 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 	return keyboard
 }
 
-func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) {
+func (p *Paginator) Show() {
+	p.Filter()
+	p.Sort()
 
-	if callbackHandlerID, ok := callbackHandler[p.prefix]; ok {
-		b.UnregisterHandler(callbackHandlerID)
+	if callbackHandlerID, ok := Handlers[p.prefix]; ok {
+		p.bot.UnregisterHandler(callbackHandlerID)
 	}
-	callbackHandler[p.prefix] = b.RegisterHandler(bot.HandlerTypeCallbackQueryData, p.prefix, bot.MatchTypePrefix, p.callbackHandler)
+	Handlers[p.prefix] = p.bot.RegisterHandler(bot.HandlerTypeCallbackQueryData, p.prefix, bot.MatchTypePrefix, p.callbackHandler)
 
-	p.Ctx = ctx
-	p.Bot = b
 	p.text = p.buildText()
 	p.keyboard.InlineKeyboard = p.buildKeyboard()
 
 	var err error
-	p.Message, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      chatID,
+	p.message, err = p.bot.SendMessage(p.ctx, &bot.SendMessageParams{
+		ChatID:      p.update.Message.Chat.ID,
 		Text:        p.text,
 		ParseMode:   models.ParseModeHTML,
 		ReplyMarkup: p.keyboard,
@@ -319,6 +287,9 @@ func (p *Paginator) Show(ctx context.Context, b *bot.Bot, chatID any) {
 }
 
 func (p *Paginator) Refresh() {
+
+	p.Filter()
+	p.Sort()
 
 	keyboard := p.buildKeyboard()
 	text := p.buildText()
@@ -333,9 +304,9 @@ func (p *Paginator) Refresh() {
 	}
 	var err error
 	if textChanged {
-		_, err = p.Bot.EditMessageText(p.Ctx, &bot.EditMessageTextParams{
-			ChatID:    p.Message.Chat.ID,
-			MessageID: p.Message.ID,
+		_, err = p.bot.EditMessageText(p.ctx, &bot.EditMessageTextParams{
+			ChatID:    p.message.Chat.ID,
+			MessageID: p.message.ID,
 			// InlineMessageID: p.callbackQuery.InlineMessageID,
 			Text:        p.text,
 			ParseMode:   models.ParseModeHTML,
@@ -344,9 +315,9 @@ func (p *Paginator) Refresh() {
 	}
 
 	if !textChanged && kbdChanged {
-		_, err = p.Bot.EditMessageReplyMarkup(p.Ctx, &bot.EditMessageReplyMarkupParams{
-			ChatID:    p.Message.Chat.ID,
-			MessageID: p.Message.ID,
+		_, err = p.bot.EditMessageReplyMarkup(p.ctx, &bot.EditMessageReplyMarkupParams{
+			ChatID:    p.message.Chat.ID,
+			MessageID: p.message.ID,
 			// InlineMessageID: p.callbackQuery.InlineMessageID,
 			ReplyMarkup: p.keyboard,
 		})
@@ -368,7 +339,7 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 
 	if unicode.IsNumber(rune(cmd[0])) {
 		p.selectedItem, _ = strconv.Atoi(cmd)
-		p.extControlsVisible = false
+		p.extControls = false
 	}
 
 	switch cmd {
@@ -383,26 +354,23 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 		}
 
 	case CB_TOGGLE_FILTERS:
-		p.extControlsVisible = !p.extControlsVisible
+		p.extControls = !p.extControls
 	}
 
 	if len(cmd) > 10 {
 		var payload = cmd[10:]
 		switch cmd[0:10] {
 		case CB_ORDER_BY:
-			p.Sorting.ToggleKey(payload)
-			p.Sort()
+			p.Sorting.ToggleAttribute(payload)
 			p.selectedItem = -1
 		case CB_FILTER_BY:
 			split := strings.Split(payload, "/")
-			p.Filtering.Toggle(split[0], split[1])
+			p.Filtering.ToggleAttribute(split[0], split[1])
 			p.activePage = 0
 			p.selectedItem = -1
-			p.Filter()
-			p.Sort()
 		case CB_ACTION:
 			if p.selectedItem != -1 {
-				if p.virtual.ItemActionExec(p.selectedItem, payload) {
+				if p.Actor.Execute(p.selectedItem, payload) {
 					p.selectedItem = -1
 				}
 			}

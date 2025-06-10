@@ -16,10 +16,10 @@ type TorrserverPaginator struct {
 }
 
 // ----------------------------------------
-func NewPaginator() *TorrserverPaginator {
+func NewPaginator(ctx context.Context, b *bot.Bot, update *models.Update) *TorrserverPaginator {
 	var p TorrserverPaginator
 	p = TorrserverPaginator{
-		*paginator.New(&p, "torrserver", 4),
+		*paginator.New(ctx, b, update, "torrserver", 4, &p, &p, nil),
 	}
 	return &p
 }
@@ -29,21 +29,21 @@ func (p *TorrserverPaginator) Item(i int) *torrserver.TSListItem {
 }
 
 // method overload
-func (p *TorrserverPaginator) ItemString(i int) string {
+func (p *TorrserverPaginator) Line(i int) string {
 	item := p.Item(i)
 	return item.Title +
 		" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
 }
 
 // method overload
-func (p *TorrserverPaginator) ItemContextActions(i int) []string {
+func (p *TorrserverPaginator) Actions(i int) []string {
 	return []string{"delete"}
 }
 
 // method overload
-func (p *TorrserverPaginator) ItemActionExec(i int, actionKey string) bool {
+func (p *TorrserverPaginator) Execute(i int, action string) (unselect bool) {
 	item := p.Item(i)
-	if actionKey == "delete" {
+	if action == "delete" {
 		if err := torrserver.Delete(item.Hash); err == nil {
 			p.Delete(i)
 		} else {
@@ -54,17 +54,16 @@ func (p *TorrserverPaginator) ItemActionExec(i int, actionKey string) bool {
 }
 
 // method overload
-func (p *TorrserverPaginator) LessItem(i int, j int, attributeKey string) bool {
+func (p *TorrserverPaginator) Compare(i int, j int, attribute string) bool {
 	a := p.Item(i)
 	b := p.Item(j)
-	switch attributeKey {
+	switch attribute {
 	case "Size":
 		return a.Torrent_Size < b.Torrent_Size
 	}
 	return false
 }
 
-// method overload
 func (p *TorrserverPaginator) Reload() error {
 
 	result, err := torrserver.List()
@@ -77,16 +76,18 @@ func (p *TorrserverPaginator) Reload() error {
 	for i := range *result {
 		p.Append(&(*result)[i])
 	}
-
-	return p.Paginator.Reload()
+	return nil
 }
 
 // -------------------------------------------------------------------------
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	var p = NewPaginator()
-	p.Sorting.Setup([]paginator.SortHeader{
-		{AttributeName: "Size", ButtonText: "size", Order: 1},
+	var p = NewPaginator(ctx, b, update)
+	p.Sorting.Setup([]paginator.SortingHeader{
+		{Attribute: "Size", ButtonText: "size", Order: 1},
 	})
-	p.Reload()
-	p.Show(ctx, b, update.Message.Chat.ID)
+	if err := p.Reload(); err != nil {
+		p.ReplyMessage(err.Error())
+	} else {
+		p.Show()
+	}
 }
