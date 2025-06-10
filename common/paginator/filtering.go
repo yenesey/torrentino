@@ -1,28 +1,28 @@
 package paginator
 
-type FilterAttribute struct {
-	AttributeName string
-	Values        []string
-	State         map[string]bool
+type FilterHeader struct {
+	Attribute string
+	Values    []string
+	States     map[string]bool  // on/off == true/false
 }
 
-type FilteringState struct {
-	attributes []FilterAttribute
+type Filtering struct {
+	attributes []FilterHeader
 }
 
-func (f *FilteringState) Setup(attributes []string) {
-	f.attributes = make([]FilterAttribute, len(attributes))
-	for i, AttributeName := range attributes {
-		f.attributes[i].AttributeName = AttributeName
+func (f *Filtering) Setup(attributes []string) {
+	f.attributes = make([]FilterHeader, len(attributes))
+	for i, Attribute := range attributes {
+		f.attributes[i].Attribute = Attribute
 		f.attributes[i].Values = make([]string, 0, 8)
-		f.attributes[i].State = make(map[string]bool)
+		f.attributes[i].States = make(map[string]bool)
 	}
 }
 
-func (f *FilteringState) Toggle(attributeName string, attributeValue string) {
+func (f *Filtering) ToggleAttribute(attribute string, value string) {
 	for i := range f.attributes {
-		if f.attributes[i].AttributeName == attributeName {
-			f.attributes[i].State[attributeValue] = !f.attributes[i].State[attributeValue]
+		if f.attributes[i].Attribute == attribute {
+			f.attributes[i].States[value] = !f.attributes[i].States[value]
 			break
 		}
 	}

@@ -51,10 +51,10 @@ type ListPaginator struct {
 }
 
 // ----------------------------------------
-func NewPaginator() *ListPaginator {
+func NewPaginator(ctx context.Context, b *bot.Bot, update *models.Update) *ListPaginator {
 	var p ListPaginator
 	p = ListPaginator{
-		*paginator.New("list", 4, &p, &p),
+		*paginator.New(ctx, b, update, "list", 4, &p, &p, &p),
 	}
 	return &p
 }
@@ -118,7 +118,7 @@ func (p *ListPaginator) Footer() string {
 
 	var downloaded uint64
 	var uploaded uint64
-	for i := 0; i < p.Len(); i++ {
+	for i := range p.Len() {
 		item := p.Item(i)
 		downloaded += uint64(*item.DownloadedEver)
 		uploaded += uint64(*item.UploadRatio * float64(*item.DownloadedEver))
@@ -132,20 +132,20 @@ func (p *ListPaginator) Footer() string {
 }
 
 // method overload
-func (p *ListPaginator) Value(_item any, attributeName string) string {
-	item := _item.(*ListItem)
-	if attributeName == "Status" {
+func (p *ListPaginator) Stringify(i int, attribute string) string {
+	item := p.Item(i)
+	if attribute == "Status" {
 		return item.Status
 	}
 	return ""
 }
 
 // method overload
-func (p *ListPaginator) Compare(i int, j int, attributeKey string) bool {
+func (p *ListPaginator) Compare(i int, j int, attribute string) bool {
 	a := p.Item(i)
 	b := p.Item(j)
 
-	switch attributeKey {
+	switch attribute {
 	case "AddedDate":
 		return (*a.AddedDate).Compare(*b.AddedDate) == -1
 	case "Name":
@@ -175,10 +175,10 @@ func (p *ListPaginator) Actions(i int) (result []string) {
 }
 
 // method overload
-func (p *ListPaginator) Execute(i int, actionKey string) (unSelectItem bool) {
+func (p *ListPaginator) Execute(i int, action string) (unselect bool) {
 	var err error
 	item := p.Item(i)
-	switch actionKey {
+	switch action {
 	case "delete":
 		if item.ID != nil {
 			err = transmission.Delete(*item.ID)
@@ -205,7 +205,6 @@ func (p *ListPaginator) Execute(i int, actionKey string) (unSelectItem bool) {
 	return true
 }
 
-// method overload
 func (p *ListPaginator) Reload() error {
 
 	torrents, err := transmission.List()
@@ -289,7 +288,7 @@ func (p *ListPaginator) Reload() error {
 	for i := range listItems {
 		p.Append(&listItems[i])
 	}
-	return p.Paginator.Reload()
+	return nil
 }
 
 // -------------------------------------------------------------------------
@@ -320,17 +319,20 @@ var Updater = func() func(ctx context.Context, p *ListPaginator) {
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
-	p := NewPaginator()
-	p.Sorting.Setup([]paginator.SortHeader{
-		{AttributeName: "AddedDate", ButtonText: "date", Order: 1},
-		{AttributeName: "Name", ButtonText: "name", Order: 1},
-		{AttributeName: "DownloadedEver", ButtonText: "size", Order: 0},
-		{AttributeName: "IsDir", ButtonText: "dir", Order: 0},
+	p := NewPaginator(ctx, b, update)
+	p.Sorting.Setup([]paginator.SortingHeader{
+		{Attribute: "AddedDate", ButtonText: "date", Order: 1},
+		{Attribute: "Name", ButtonText: "name", Order: 1},
+		{Attribute: "DownloadedEver", ButtonText: "size", Order: 0},
+		{Attribute: "IsDir", ButtonText: "dir", Order: 0},
 	})
 	p.Filtering.Setup([]string{"Status"})
-	
+
 	go Updater(ctx, p)
 
-	p.Reload()
-	p.Show(ctx, b, update.Message.Chat.ID)
+	if err := p.Reload(); err != nil {
+		p.ReplyMessage(err.Error())
+	} else {
+		p.Show()
+	}
 }
