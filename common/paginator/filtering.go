@@ -1,29 +1,22 @@
 package paginator
 
-type FilterHeader struct {
-	Attribute string
-	Values    []string
-	Enabled   map[string]bool  // on/off == true/false
-}
+import "torrentino/common/ordmap"
 
 type Filtering struct {
-	attributes []FilterHeader
+	attributes *ordmap.OrderedMap[string, *ordmap.OrderedMap[string, bool]]
 }
 
 func (f *Filtering) Setup(attributes []string) {
-	f.attributes = make([]FilterHeader, len(attributes))
-	for i, Attribute := range attributes {
-		f.attributes[i].Attribute = Attribute
-		f.attributes[i].Values = make([]string, 0, 8)
-		f.attributes[i].Enabled = make(map[string]bool)
+	f.attributes = ordmap.New[string, *ordmap.OrderedMap[string, bool]]()
+	for _, attr := range attributes {
+		f.attributes.Set(attr, ordmap.New[string, bool]())
 	}
 }
 
 func (f *Filtering) ToggleAttribute(attribute string, value string) {
-	for i := range f.attributes {
-		if f.attributes[i].Attribute == attribute {
-			f.attributes[i].Enabled[value] = !f.attributes[i].Enabled[value]
-			break
+	if buttons, ok := f.attributes.Get(attribute); ok {
+		if enabled, ok := buttons.Get(value); ok {
+			buttons.Set(value, !enabled)
 		}
 	}
 }

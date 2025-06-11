@@ -175,6 +175,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 		Text string
 		Data string
 	}
+	sortChars := [3]string{"", "▼", "▲"}
 
 	btoi := func(b bool) int {
 		if b {
@@ -215,17 +216,20 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 			keyboard = append(keyboard, row)
 		}
 
-		for _, attr := range p.Filtering.attributes {
+		
+		for attr, buttons := range p.Filtering.attributes.Iter() {
 			row = []models.InlineKeyboardButton{}
-			for i, val := range attr.Values {
+			i := 0
+			for button, enabled := range buttons.Iter() {
 				row = append(row, models.InlineKeyboardButton{
-					Text:         []string{"", "✓"}[btoi(attr.Enabled[val])] + val,
-					CallbackData: p.prefix + CB_FILTER_BY + attr.Attribute + "/" + val,
+					Text:         []string{"", "✓"}[btoi(enabled)] + button,
+					CallbackData: p.prefix + CB_FILTER_BY + attr + "/" + button,
 				})
 				if (i+1)%4 == 0 { // 4 buttons max
 					keyboard = append(keyboard, row)
 					row = []models.InlineKeyboardButton{}
 				}
+				i++
 			}
 			if len(row) > 0 {
 				keyboard = append(keyboard, row)

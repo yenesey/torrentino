@@ -4,8 +4,6 @@ import (
 	"slices"
 )
 
-var sortChars = [...]string{"", "▼", "▲"}
-
 type SortingHeader struct {
 	Attribute  string // attribute name in List items
 	ButtonText string // button text
@@ -37,8 +35,7 @@ func (s *Sorting) GetHeader(attribute string) (i int, h *SortingHeader) {
 }
 
 func (s *Sorting) ToggleAttribute(attribute string) {
-
-	var i, h = s.GetHeader(attribute)
+	i, h := s.GetHeader(attribute)
 	switch h.Order {
 	case 0:
 		h.Order = 1

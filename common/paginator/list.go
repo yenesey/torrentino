@@ -28,12 +28,10 @@ func (ls *List) Append(item any) {
 	index := len(ls.list)-1
 	ls.index = append(ls.index, index)
 
-	for i := range ls.Filtering.attributes {
-		attr := &ls.Filtering.attributes[i]
-		value := ls.Evaluator.Stringify(index, attr.Attribute)
-		if _, ok := attr.Enabled[value]; !ok {
-			attr.Enabled[value] = false
-			attr.Values = append(attr.Values, value)
+	for attribute, buttons := range ls.Filtering.attributes.Iter() {
+		value := ls.Evaluator.Stringify(index, attribute)
+		if _, ok := buttons.Get(value); !ok {
+			buttons.Set(value, false)
 		}
 	}
 }
@@ -60,14 +58,13 @@ func (ls *List) Filter() {
       	ls.index[i] = i
 	}
 	for i := range ls.list {
-		keepItem := len(ls.Filtering.attributes) == 0
-		for j := range ls.Filtering.attributes {
-			attr := &ls.Filtering.attributes[j]
-			// stringValue := reflect.Indirect(reflect.ValueOf(ls.list[i])).FieldByName(attr.Attribute).String()
-			stringValue := ls.Evaluator.Stringify(i, attr.Attribute)
-			keepItem = keepItem || attr.Enabled[stringValue] || func() bool { //  exact filter on, or all filters is off
-				for _, state := range attr.Enabled {
-					if state {
+		keepItem := ls.Filtering.attributes.Len() == 0
+		for attribute, buttons := range ls.Filtering.attributes.Iter() {
+			// stringValue := reflect.Indirect(reflect.ValueOf(ls.list[i])).FieldByName(attribute).String()
+			value := ls.Evaluator.Stringify(i, attribute)
+			keepItem = keepItem || buttons.GetOne(value) || func() bool { //  exact filter on, or all filters is off
+				for _, enabled := range buttons.Iter() {
+					if enabled {
 						return false
 					}
 				}
