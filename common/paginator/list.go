@@ -31,8 +31,8 @@ func (ls *List) Append(item any) {
 	for i := range ls.Filtering.attributes {
 		attr := &ls.Filtering.attributes[i]
 		value := ls.Evaluator.Stringify(index, attr.Attribute)
-		if _, ok := attr.States[value]; !ok {
-			attr.States[value] = false
+		if _, ok := attr.Enabled[value]; !ok {
+			attr.Enabled[value] = false
 			attr.Values = append(attr.Values, value)
 		}
 	}
@@ -65,8 +65,8 @@ func (ls *List) Filter() {
 			attr := &ls.Filtering.attributes[j]
 			// stringValue := reflect.Indirect(reflect.ValueOf(ls.list[i])).FieldByName(attr.Attribute).String()
 			stringValue := ls.Evaluator.Stringify(i, attr.Attribute)
-			keepItem = keepItem || attr.States[stringValue] || func() bool { //  exact filter on, or all filters is off
-				for _, state := range attr.States {
+			keepItem = keepItem || attr.Enabled[stringValue] || func() bool { //  exact filter on, or all filters is off
+				for _, state := range attr.Enabled {
 					if state {
 						return false
 					}

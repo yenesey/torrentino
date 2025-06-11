@@ -27,18 +27,18 @@ func (s *Sorting) Setup(headers []SortingHeader) {
 	}
 }
 
-func (s *Sorting) GetHeader(attribute string) (h *SortingHeader, i int) {
+func (s *Sorting) GetHeader(attribute string) (i int, h *SortingHeader) {
 	for i := range s.headers {
 		if s.headers[i].Attribute == attribute {
-			return &s.headers[i], i
+			return i, &s.headers[i]
 		}
 	}
-	return nil, -1
+	return -1, nil
 }
 
 func (s *Sorting) ToggleAttribute(attribute string) {
 
-	var h, i = s.GetHeader(attribute)
+	var i, h = s.GetHeader(attribute)
 	switch h.Order {
 	case 0:
 		h.Order = 1
