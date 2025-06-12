@@ -206,7 +206,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 	if p.extControls {
 		row = []models.InlineKeyboardButton{}
-		for _, v := range p.Sorting.headers {
+		for _, v := range p.sorting.headers {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         v.ButtonText + sortChars[int(v.Order)],
 				CallbackData: p.prefix + CB_ORDER_BY + v.Attribute,
@@ -217,7 +217,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 		}
 
 		
-		for attr, buttons := range p.Filtering.attributes.Iter() {
+		for attr, buttons := range p.filters.Iter() {
 			row = []models.InlineKeyboardButton{}
 			i := 0
 			for button, enabled := range buttons.Iter() {
@@ -365,11 +365,11 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 		var payload = cmd[10:]
 		switch cmd[0:10] {
 		case CB_ORDER_BY:
-			p.Sorting.ToggleAttribute(payload)
+			p.ToggleSorting(payload)
 			p.selectedItem = -1
 		case CB_FILTER_BY:
 			split := strings.Split(payload, "/")
-			p.Filtering.ToggleAttribute(split[0], split[1])
+			p.ToggleFilter(split[0], split[1])
 			p.activePage = 0
 			p.selectedItem = -1
 		case CB_ACTION:

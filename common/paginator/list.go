@@ -3,6 +3,7 @@ package paginator
 import (
 	"slices"
 	"sort"
+	"torrentino/common/ordmap"
 )
 
 type Evaluator interface {
@@ -10,12 +11,21 @@ type Evaluator interface {
 	Stringify(i int, attribute string) string
 }
 
+type Sorting struct {
+	Attribute  string // attribute name in List items
+	ButtonText string // button text
+	Order      int8   // 0 - unsorted, 1 - desc,  2 - asc
+}
+
 type List struct {
 	list  []any
 	index []int
 	Evaluator
-	Sorting
-	Filtering
+	sorting struct {
+		headers []Sorting
+		queue   []int
+	}
+	filters *ordmap.OrderedMap[string, *ordmap.OrderedMap[string, bool]]
 }
 
 func (ls *List) Alloc(l int) {
@@ -25,10 +35,10 @@ func (ls *List) Alloc(l int) {
 
 func (ls *List) Append(item any) {
 	ls.list = append(ls.list, item)
-	index := len(ls.list)-1
+	index := len(ls.list) - 1
 	ls.index = append(ls.index, index)
 
-	for attribute, buttons := range ls.Filtering.attributes.Iter() {
+	for attribute, buttons := range ls.filters.Iter() {
 		value := ls.Evaluator.Stringify(index, attribute)
 		if _, ok := buttons.Get(value); !ok {
 			buttons.Set(value, false)
@@ -55,11 +65,11 @@ func (ls *List) Filter() {
 	index := make([]int, 0, len(ls.list))
 	ls.index = make([]int, len(ls.list))
 	for i := range ls.list {
-      	ls.index[i] = i
+		ls.index[i] = i
 	}
 	for i := range ls.list {
-		keepItem := ls.Filtering.attributes.Len() == 0
-		for attribute, buttons := range ls.Filtering.attributes.Iter() {
+		keepItem := ls.filters.Len() == 0
+		for attribute, buttons := range ls.filters.Iter() {
 			// stringValue := reflect.Indirect(reflect.ValueOf(ls.list[i])).FieldByName(attribute).String()
 			value := ls.Evaluator.Stringify(i, attribute)
 			keepItem = keepItem || buttons.GetOne(value) || func() bool { //  exact filter on, or all filters is off
@@ -96,8 +106,8 @@ func (ls *List) Swap(i, j int) {
 // part of sort.Interface
 func (ls *List) Less(i, j int) bool {
 
-	for _, k := range ls.Sorting.queue {
-		h := &ls.Sorting.headers[k]
+	for _, k := range ls.sorting.queue {
+		h := &ls.sorting.headers[k]
 		switch {
 		case ls.Evaluator.Compare(i, j, h.Attribute):
 			return h.Order == 2
@@ -112,4 +122,53 @@ func (ls *List) Less(i, j int) bool {
 
 func (ls *List) Compare(i int, j int, attributeName string) bool {
 	return false
+}
+
+func (ls *List) SetupFilter(attributes []string) {
+	ls.filters = ordmap.New[string, *ordmap.OrderedMap[string, bool]]()
+	for _, attr := range attributes {
+		ls.filters.Set(attr, ordmap.New[string, bool]())
+	}
+}
+
+func (ls *List) ToggleFilter(attribute string, value string) {
+	if buttons, ok := ls.filters.Get(attribute); ok {
+		if enabled, ok := buttons.Get(value); ok {
+			buttons.Set(value, !enabled)
+		}
+	}
+}
+
+func (ls *List) SetupSorting(headers []Sorting) {
+	ls.sorting.headers = headers
+	ls.sorting.queue = make([]int, 0, len(headers))
+	for i := range ls.sorting.headers {
+		if ls.sorting.headers[i].Order != 0 {
+			ls.sorting.queue = append(ls.sorting.queue, i)
+		}
+	}
+}
+
+func (ls *List) getSortingHeader(attribute string) (i int, h *Sorting) {
+	for i := range ls.sorting.headers {
+		if ls.sorting.headers[i].Attribute == attribute {
+			return i, &ls.sorting.headers[i]
+		}
+	}
+	return -1, nil
+}
+
+func (ls *List) ToggleSorting(attribute string) {
+	i, h := ls.getSortingHeader(attribute)
+	switch h.Order {
+	case 0:
+		h.Order = 1
+		ls.sorting.queue = append(ls.sorting.queue, i)
+	case 1:
+		h.Order = 2
+	case 2:
+		h.Order = 0
+		idx := slices.Index(ls.sorting.queue, i)
+		ls.sorting.queue = slices.Delete(ls.sorting.queue, idx, idx+1)
+	}
 }
