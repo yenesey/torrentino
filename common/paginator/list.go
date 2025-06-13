@@ -12,7 +12,7 @@ type Evaluator interface {
 }
 
 type Sorting struct {
-	Attribute  string // attribute name in List items
+	Attribute  string // attribute name in List.list[] items
 	ButtonText string // button text
 	Order      int8   // 0 - unsorted, 1 - desc,  2 - asc
 }
@@ -22,8 +22,8 @@ type List struct {
 	index []int
 	Evaluator
 	sorting struct {
-		headers []Sorting
-		queue   []int
+		attributes []Sorting
+		queue      []int
 	}
 	filters *ordmap.OrderedMap[string, *ordmap.OrderedMap[string, bool]]
 }
@@ -107,13 +107,13 @@ func (ls *List) Swap(i, j int) {
 func (ls *List) Less(i, j int) bool {
 
 	for _, k := range ls.sorting.queue {
-		h := &ls.sorting.headers[k]
+		attr := &ls.sorting.attributes[k]
 		switch {
-		case ls.Evaluator.Compare(i, j, h.Attribute):
-			return h.Order == 2
+		case ls.Evaluator.Compare(i, j, attr.Attribute):
+			return attr.Order == 2
 
-		case ls.Evaluator.Compare(j, i, h.Attribute):
-			return h.Order != 2
+		case ls.Evaluator.Compare(j, i, attr.Attribute):
+			return attr.Order != 2
 		}
 		// i == j; try the next comparison.
 	}
@@ -124,7 +124,7 @@ func (ls *List) Compare(i int, j int, attributeName string) bool {
 	return false
 }
 
-func (ls *List) SetupFilter(attributes []string) {
+func (ls *List) SetupFiltering(attributes []string) {
 	ls.filters = ordmap.New[string, *ordmap.OrderedMap[string, bool]]()
 	for _, attr := range attributes {
 		ls.filters.Set(attr, ordmap.New[string, bool]())
@@ -139,20 +139,20 @@ func (ls *List) ToggleFilter(attribute string, value string) {
 	}
 }
 
-func (ls *List) SetupSorting(headers []Sorting) {
-	ls.sorting.headers = headers
-	ls.sorting.queue = make([]int, 0, len(headers))
-	for i := range ls.sorting.headers {
-		if ls.sorting.headers[i].Order != 0 {
+func (ls *List) SetupSorting(attributes []Sorting) {
+	ls.sorting.attributes = attributes
+	ls.sorting.queue = make([]int, 0, len(attributes))
+	for i := range ls.sorting.attributes {
+		if ls.sorting.attributes[i].Order != 0 {
 			ls.sorting.queue = append(ls.sorting.queue, i)
 		}
 	}
 }
 
 func (ls *List) getSortingHeader(attribute string) (i int, h *Sorting) {
-	for i := range ls.sorting.headers {
-		if ls.sorting.headers[i].Attribute == attribute {
-			return i, &ls.sorting.headers[i]
+	for i := range ls.sorting.attributes {
+		if ls.sorting.attributes[i].Attribute == attribute {
+			return i, &ls.sorting.attributes[i]
 		}
 	}
 	return -1, nil

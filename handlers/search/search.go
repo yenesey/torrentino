@@ -284,7 +284,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		{Attribute: "Peers", ButtonText: "peers", Order: 0},
 		{Attribute: "Link", ButtonText: "file", Order: 0},
 	})
-	p.SetupFilter([]string{"TrackerId"})
+	p.SetupFiltering([]string{"TrackerId"})
 	if err := p.Reload(); err != nil {
 		p.ReplyMessage(err.Error())
 	} else {

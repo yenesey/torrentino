@@ -326,7 +326,7 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		{Attribute: "DownloadedEver", ButtonText: "size", Order: 0},
 		{Attribute: "IsDir", ButtonText: "dir", Order: 0},
 	})
-	p.SetupFilter([]string{"Status"})
+	p.SetupFiltering([]string{"Status"})
 
 	go Updater(ctx, p)
 

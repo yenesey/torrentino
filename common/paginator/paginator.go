@@ -206,17 +206,16 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 	if p.extControls {
 		row = []models.InlineKeyboardButton{}
-		for _, v := range p.sorting.headers {
+		for _, attr := range p.sorting.attributes {
 			row = append(row, models.InlineKeyboardButton{
-				Text:         v.ButtonText + sortChars[int(v.Order)],
-				CallbackData: p.prefix + CB_ORDER_BY + v.Attribute,
+				Text:         attr.ButtonText + sortChars[int(attr.Order)],
+				CallbackData: p.prefix + CB_ORDER_BY + attr.Attribute,
 			})
 		}
 		if len(row) > 0 {
 			keyboard = append(keyboard, row)
 		}
 
-		
 		for attr, buttons := range p.filters.Iter() {
 			row = []models.InlineKeyboardButton{}
 			i := 0
