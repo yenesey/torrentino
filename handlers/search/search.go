@@ -153,7 +153,7 @@ func (p *FindPaginator) Actions(i int) (result []string) {
 }
 
 // method overload
-func (p *FindPaginator) Execute(i int, action string)  (unselect bool) {
+func (p *FindPaginator) Execute(i int, action string) (unselect bool) {
 
 	item := p.Item(i)
 
@@ -190,7 +190,6 @@ func (p *FindPaginator) Execute(i int, action string)  (unselect bool) {
 	}
 	return true
 }
-
 
 func (p *FindPaginator) Reload() error {
 
@@ -279,13 +278,13 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var p = NewPaginator(ctx, b, update)
-	p.Sorting.Setup([]paginator.SortingHeader{
+	p.SetupSorting([]paginator.Sorting{
 		{Attribute: "Size", ButtonText: "size", Order: 1},
 		{Attribute: "Seeders", ButtonText: "seeds", Order: 1},
 		{Attribute: "Peers", ButtonText: "peers", Order: 0},
 		{Attribute: "Link", ButtonText: "file", Order: 0},
 	})
-	p.Filtering.Setup([]string{"TrackerId"})
+	p.SetupFiltering([]string{"TrackerId"})
 	if err := p.Reload(); err != nil {
 		p.ReplyMessage(err.Error())
 	} else {

@@ -82,7 +82,7 @@ func (p *TorrserverPaginator) Reload() error {
 // -------------------------------------------------------------------------
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var p = NewPaginator(ctx, b, update)
-	p.Sorting.Setup([]paginator.SortingHeader{
+	p.SetupSorting([]paginator.Sorting{
 		{Attribute: "Size", ButtonText: "size", Order: 1},
 	})
 	if err := p.Reload(); err != nil {

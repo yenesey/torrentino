@@ -175,6 +175,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 		Text string
 		Data string
 	}
+	sortChars := [3]string{"", "▼", "▲"}
 
 	btoi := func(b bool) int {
 		if b {
@@ -205,27 +206,29 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 	if p.extControls {
 		row = []models.InlineKeyboardButton{}
-		for _, v := range p.Sorting.headers {
+		for _, attr := range p.sorting.attributes.Iter() {
 			row = append(row, models.InlineKeyboardButton{
-				Text:         v.ButtonText + sortChars[int(v.Order)],
-				CallbackData: p.prefix + CB_ORDER_BY + v.Attribute,
+				Text:         attr.ButtonText + sortChars[int(attr.Order)],
+				CallbackData: p.prefix + CB_ORDER_BY + attr.Attribute,
 			})
 		}
 		if len(row) > 0 {
 			keyboard = append(keyboard, row)
 		}
 
-		for _, attr := range p.Filtering.attributes {
+		for attr, buttons := range p.filters.Iter() {
 			row = []models.InlineKeyboardButton{}
-			for j, val := range attr.Values {
+			i := 0
+			for button, enabled := range buttons.Iter() {
 				row = append(row, models.InlineKeyboardButton{
-					Text:         []string{"", "✓"}[btoi(attr.States[val])] + val,
-					CallbackData: p.prefix + CB_FILTER_BY + attr.Attribute + "/" + val,
+					Text:         []string{"", "✓"}[btoi(enabled)] + button,
+					CallbackData: p.prefix + CB_FILTER_BY + attr + "/" + button,
 				})
-				if (j+1)%4 == 0 { // 4 buttons max
+				if (i+1)%4 == 0 { // 4 buttons max
 					keyboard = append(keyboard, row)
 					row = []models.InlineKeyboardButton{}
 				}
+				i++
 			}
 			if len(row) > 0 {
 				keyboard = append(keyboard, row)
@@ -262,7 +265,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 	return keyboard
 }
 
-func (p *Paginator) Show() {
+func (p *Paginator) Show() { //todo: Show + Refresh in one?
 	p.Filter()
 	p.Sort()
 
@@ -361,11 +364,11 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 		var payload = cmd[10:]
 		switch cmd[0:10] {
 		case CB_ORDER_BY:
-			p.Sorting.ToggleAttribute(payload)
+			p.ToggleSorting(payload)
 			p.selectedItem = -1
 		case CB_FILTER_BY:
 			split := strings.Split(payload, "/")
-			p.Filtering.ToggleAttribute(split[0], split[1])
+			p.ToggleFilter(split[0], split[1])
 			p.activePage = 0
 			p.selectedItem = -1
 		case CB_ACTION:

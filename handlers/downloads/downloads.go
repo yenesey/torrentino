@@ -320,13 +320,13 @@ var Updater = func() func(ctx context.Context, p *ListPaginator) {
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	p := NewPaginator(ctx, b, update)
-	p.Sorting.Setup([]paginator.SortingHeader{
+	p.SetupSorting([]paginator.Sorting{
 		{Attribute: "AddedDate", ButtonText: "date", Order: 1},
 		{Attribute: "Name", ButtonText: "name", Order: 1},
 		{Attribute: "DownloadedEver", ButtonText: "size", Order: 0},
 		{Attribute: "IsDir", ButtonText: "dir", Order: 0},
 	})
-	p.Filtering.Setup([]string{"Status"})
+	p.SetupFiltering([]string{"Status"})
 
 	go Updater(ctx, p)
 
