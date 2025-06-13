@@ -1,9 +1,13 @@
 package paginator
 
 import (
+	"fmt"
 	"slices"
 	"sort"
 	"torrentino/common/ordmap"
+	"torrentino/common/utils"
+
+	"github.com/pkg/errors"
 )
 
 type Evaluator interface {
@@ -22,8 +26,8 @@ type List struct {
 	index []int
 	Evaluator
 	sorting struct {
-		attributes []Sorting
-		queue      []int
+		attributes *ordmap.OrderedMap[string, *Sorting]
+		queue      []string
 	}
 	filters *ordmap.OrderedMap[string, *ordmap.OrderedMap[string, bool]]
 }
@@ -105,17 +109,13 @@ func (ls *List) Swap(i, j int) {
 
 // part of sort.Interface
 func (ls *List) Less(i, j int) bool {
-
-	for _, k := range ls.sorting.queue {
-		attr := &ls.sorting.attributes[k]
-		switch {
-		case ls.Evaluator.Compare(i, j, attr.Attribute):
+	for _, v := range ls.sorting.queue {
+		attr := ls.sorting.attributes.GetOne(v)
+		if ls.Evaluator.Compare(i, j, attr.Attribute) {
 			return attr.Order == 2
-
-		case ls.Evaluator.Compare(j, i, attr.Attribute):
+		} else if ls.Evaluator.Compare(j, i, attr.Attribute) {
 			return attr.Order != 2
 		}
-		// i == j; try the next comparison.
 	}
 	return false
 }
@@ -140,35 +140,28 @@ func (ls *List) ToggleFilter(attribute string, value string) {
 }
 
 func (ls *List) SetupSorting(attributes []Sorting) {
-	ls.sorting.attributes = attributes
-	ls.sorting.queue = make([]int, 0, len(attributes))
-	for i := range ls.sorting.attributes {
-		if ls.sorting.attributes[i].Order != 0 {
-			ls.sorting.queue = append(ls.sorting.queue, i)
+	ls.sorting.attributes = ordmap.New[string, *Sorting]()
+	ls.sorting.queue = make([]string, 0, len(attributes))
+	for _, attr := range attributes {
+		ls.sorting.attributes.Set(attr.Attribute, &attr)
+		if attr.Order != 0 {
+			ls.sorting.queue = append(ls.sorting.queue, attr.Attribute)
 		}
 	}
-}
-
-func (ls *List) getSortingHeader(attribute string) (i int, h *Sorting) {
-	for i := range ls.sorting.attributes {
-		if ls.sorting.attributes[i].Attribute == attribute {
-			return i, &ls.sorting.attributes[i]
-		}
-	}
-	return -1, nil
 }
 
 func (ls *List) ToggleSorting(attribute string) {
-	i, h := ls.getSortingHeader(attribute)
-	switch h.Order {
-	case 0:
-		h.Order = 1
-		ls.sorting.queue = append(ls.sorting.queue, i)
-	case 1:
-		h.Order = 2
-	case 2:
+	h := ls.sorting.attributes.GetOne(attribute)
+	if h == nil {
+		utils.LogError(errors.New(fmt.Sprintf("attribute %s not found", attribute)))
+		return
+	}
+	h.Order += 1
+	if h.Order == 1 {
+		ls.sorting.queue = append(ls.sorting.queue, attribute)
+	} else if h.Order > 2 {
 		h.Order = 0
-		idx := slices.Index(ls.sorting.queue, i)
+		idx := slices.Index(ls.sorting.queue, attribute)
 		ls.sorting.queue = slices.Delete(ls.sorting.queue, idx, idx+1)
 	}
 }

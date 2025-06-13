@@ -206,7 +206,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 	if p.extControls {
 		row = []models.InlineKeyboardButton{}
-		for _, attr := range p.sorting.attributes {
+		for _, attr := range p.sorting.attributes.Iter() {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         attr.ButtonText + sortChars[int(attr.Order)],
 				CallbackData: p.prefix + CB_ORDER_BY + attr.Attribute,
