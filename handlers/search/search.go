@@ -279,10 +279,10 @@ func getPosterLinkFromPage(pageUrl string, tracker string) string {
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var p = NewPaginator(ctx, b, update)
 	p.SetupSorting([]paginator.Sorting{
-		{Attribute: "Size", ButtonText: "size", Order: 1},
-		{Attribute: "Seeders", ButtonText: "seeds", Order: 1},
-		{Attribute: "Peers", ButtonText: "peers", Order: 0},
-		{Attribute: "Link", ButtonText: "file", Order: 0},
+		{Attribute: "Size", Alias: "size", Order: 1},
+		{Attribute: "Seeders", Alias: "seeds", Order: 1},
+		{Attribute: "Peers", Alias: "peers", Order: 0},
+		{Attribute: "Link", Alias: "file", Order: 0},
 	})
 	p.SetupFiltering([]string{"TrackerId"})
 	if err := p.Reload(); err != nil {

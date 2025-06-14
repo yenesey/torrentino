@@ -17,7 +17,7 @@ type Evaluator interface {
 
 type Sorting struct {
 	Attribute  string // attribute name in List.list[] items
-	ButtonText string // button text
+	Alias      string // button text
 	Order      int8   // 0 - unsorted, 1 - desc,  2 - asc
 }
 
@@ -76,7 +76,7 @@ func (ls *List) Filter() {
 		for attribute, buttons := range ls.filters.Iter() {
 			// stringValue := reflect.Indirect(reflect.ValueOf(ls.list[i])).FieldByName(attribute).String()
 			value := ls.Evaluator.Stringify(i, attribute)
-			keepItem = keepItem || buttons.GetOne(value) || func() bool { //  exact filter on, or all filters is off
+			keepItem = keepItem || buttons.GetUnsafe(value) || func() bool { //  exact filter on, or all filters is off
 				for _, enabled := range buttons.Iter() {
 					if enabled {
 						return false
@@ -109,12 +109,12 @@ func (ls *List) Swap(i, j int) {
 
 // part of sort.Interface
 func (ls *List) Less(i, j int) bool {
-	for _, v := range ls.sorting.queue {
-		attr := ls.sorting.attributes.GetOne(v)
-		if ls.Evaluator.Compare(i, j, attr.Attribute) {
-			return attr.Order == 2
-		} else if ls.Evaluator.Compare(j, i, attr.Attribute) {
-			return attr.Order != 2
+	for _, attribute := range ls.sorting.queue {
+		order := ls.sorting.attributes.GetUnsafe(attribute).Order
+		if ls.Evaluator.Compare(i, j, attribute) {
+			return order == 2
+		} else if ls.Evaluator.Compare(j, i, attribute) {
+			return order != 2
 		}
 	}
 	return false
@@ -151,8 +151,8 @@ func (ls *List) SetupSorting(attributes []Sorting) {
 }
 
 func (ls *List) ToggleSorting(attribute string) {
-	h := ls.sorting.attributes.GetOne(attribute)
-	if h == nil {
+	h, ok := ls.sorting.attributes.Get(attribute)
+	if !ok {
 		utils.LogError(errors.New(fmt.Sprintf("attribute %s not found", attribute)))
 		return
 	}
