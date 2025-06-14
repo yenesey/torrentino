@@ -309,7 +309,7 @@ var Updater = func() func(ctx context.Context, p *ListPaginator) {
 			select {
 			case <-ticker.C:
 				p.Reload()
-				p.Refresh()
+				p.Show()
 			case <-updaterCtx.Done():
 				return
 			}
@@ -328,11 +328,10 @@ func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	})
 	p.SetupFiltering([]string{"Status"})
 
-	go Updater(ctx, p)
-
 	if err := p.Reload(); err != nil {
 		p.ReplyMessage(err.Error())
 	} else {
 		p.Show()
+		go Updater(ctx, p)
 	}
 }
