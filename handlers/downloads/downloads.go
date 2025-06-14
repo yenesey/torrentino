@@ -293,16 +293,14 @@ func (p *ListPaginator) Reload() error {
 
 // -------------------------------------------------------------------------
 var Updater = func() func(ctx context.Context, p *ListPaginator) {
-	var (
-		cancel     context.CancelFunc
-		updaterCtx context.Context
-	)
+	var cancel context.CancelFunc
 	return func(ctx context.Context, p *ListPaginator) {
 		if cancel != nil {
 			cancel()
 		}
+		var updaterCtx context.Context
 		updaterCtx, cancel = context.WithCancel(ctx)
-		ticker := time.NewTicker(time.Second * 5)
+		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -318,7 +316,6 @@ var Updater = func() func(ctx context.Context, p *ListPaginator) {
 }()
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-
 	p := NewPaginator(ctx, b, update)
 	p.SetupSorting([]paginator.Sorting{
 		{Attribute: "AddedDate", Alias: "date", Order: 1},
