@@ -208,7 +208,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 		row = []models.InlineKeyboardButton{}
 		for _, attr := range p.sorting.attributes.Iter() {
 			row = append(row, models.InlineKeyboardButton{
-				Text:         attr.ButtonText + sortChars[int(attr.Order)],
+				Text:         attr.Alias + sortChars[int(attr.Order)],
 				CallbackData: p.prefix + CB_ORDER_BY + attr.Attribute,
 			})
 		}
@@ -265,67 +265,52 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 	return keyboard
 }
 
-func (p *Paginator) Show() { //todo: Show + Refresh in one?
-	p.Filter()
-	p.Sort()
-
-	if callbackHandlerID, ok := Handlers[p.prefix]; ok {
-		p.bot.UnregisterHandler(callbackHandlerID)
-	}
-	Handlers[p.prefix] = p.bot.RegisterHandler(bot.HandlerTypeCallbackQueryData, p.prefix, bot.MatchTypePrefix, p.callbackHandler)
-
-	p.text = p.buildText()
-	p.keyboard.InlineKeyboard = p.buildKeyboard()
-
+func (p *Paginator) Show() {
 	var err error
-	p.message, err = p.bot.SendMessage(p.ctx, &bot.SendMessageParams{
-		ChatID:      p.update.Message.Chat.ID,
-		Text:        p.text,
-		ParseMode:   models.ParseModeHTML,
-		ReplyMarkup: p.keyboard,
-	})
-	if err != nil {
-		utils.LogError(err)
-	}
-}
-
-func (p *Paginator) Refresh() {
-
 	p.Filter()
 	p.Sort()
-
-	keyboard := p.buildKeyboard()
 	text := p.buildText()
-	textChanged := text != p.text
-	kbdChanged := !reflect.DeepEqual(keyboard, p.keyboard.InlineKeyboard)
+	keyboard := p.buildKeyboard()
 
-	if textChanged {
+	if p.message == nil { // Show() first call?
+		if callbackHandlerID, ok := Handlers[p.prefix]; ok {
+			p.bot.UnregisterHandler(callbackHandlerID)
+		}
+		Handlers[p.prefix] = p.bot.RegisterHandler(bot.HandlerTypeCallbackQueryData, p.prefix, bot.MatchTypePrefix, p.callbackHandler)
 		p.text = text
-	}
-	if kbdChanged {
 		p.keyboard.InlineKeyboard = keyboard
-	}
-	var err error
-	if textChanged {
-		_, err = p.bot.EditMessageText(p.ctx, &bot.EditMessageTextParams{
-			ChatID:    p.message.Chat.ID,
-			MessageID: p.message.ID,
-			// InlineMessageID: p.callbackQuery.InlineMessageID,
+		p.message, err = p.bot.SendMessage(p.ctx, &bot.SendMessageParams{
+			ChatID:      p.update.Message.Chat.ID,
 			Text:        p.text,
 			ParseMode:   models.ParseModeHTML,
 			ReplyMarkup: p.keyboard,
 		})
+	} else {
+		textChanged := text != p.text
+		kbdChanged := !reflect.DeepEqual(keyboard, p.keyboard.InlineKeyboard)
+		if textChanged {
+			p.text = text
+		}
+		if kbdChanged {
+			p.keyboard.InlineKeyboard = keyboard
+		}
+		if textChanged {
+			_, err = p.bot.EditMessageText(p.ctx, &bot.EditMessageTextParams{
+				ChatID:    p.message.Chat.ID,
+				MessageID: p.message.ID,
+				Text:        p.text,
+				ParseMode:   models.ParseModeHTML,
+				ReplyMarkup: p.keyboard,
+			})
+		}
+		if !textChanged && kbdChanged {
+			_, err = p.bot.EditMessageReplyMarkup(p.ctx, &bot.EditMessageReplyMarkupParams{
+				ChatID:    p.message.Chat.ID,
+				MessageID: p.message.ID,
+				ReplyMarkup: p.keyboard,
+			})
+		}
 	}
-
-	if !textChanged && kbdChanged {
-		_, err = p.bot.EditMessageReplyMarkup(p.ctx, &bot.EditMessageReplyMarkupParams{
-			ChatID:    p.message.Chat.ID,
-			MessageID: p.message.ID,
-			// InlineMessageID: p.callbackQuery.InlineMessageID,
-			ReplyMarkup: p.keyboard,
-		})
-	}
-
 	if err != nil {
 		utils.LogError(err)
 	}
@@ -379,5 +364,5 @@ func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			}
 		}
 	}
-	p.Refresh()
+	p.Show()
 }

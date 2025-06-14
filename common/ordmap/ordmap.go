@@ -26,20 +26,20 @@ func (om *OrderedMap[T, V]) Get(key T) (V, bool) {
 	return val, ok
 }
 
-func (om *OrderedMap[T, V]) GetByIndex(i int) (V, bool) {
-	val, ok := om.store[om.keys[i]]
-	return val, ok
+func (om *OrderedMap[T, V]) GetUnsafe(key T) V {
+	return om.store[key]
 }
 
 func (om *OrderedMap[T, V]) Len() int {
 	return len(om.keys)
 }
 
-func (om *OrderedMap[T, V]) GetOne(key T) V {
-	return om.store[key]
+func (om *OrderedMap[T, V]) GetByIndex(i int) (V, bool) {
+	val, ok := om.store[om.keys[i]]
+	return val, ok
 }
 
-func (om *OrderedMap[T, V]) GetOneByIndex(i int) V {
+func (om *OrderedMap[T, V]) GetByIndexUnsafe(i int) V { // unsafe!
 	return om.store[om.keys[i]]
 }
 
