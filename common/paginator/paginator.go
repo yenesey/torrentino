@@ -265,7 +265,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 	return keyboard
 }
 
-func (p *Paginator) Show() { //todo: Show + Refresh in one?
+func (p *Paginator) Show() {
 	var err error
 	p.Filter()
 	p.Sort()
