@@ -31,7 +31,10 @@ func (om *OrderedMap[T, V]) GetUnsafe(key T) V {
 }
 
 func (om *OrderedMap[T, V]) Len() int {
-	return len(om.keys)
+	if om != nil {
+		return len(om.keys)
+	}
+	return 0
 }
 
 func (om *OrderedMap[T, V]) GetByIndex(i int) (V, bool) {
@@ -45,9 +48,11 @@ func (om *OrderedMap[T, V]) GetByIndexUnsafe(i int) V { // unsafe!
 
 func (om *OrderedMap[T, V]) IterKeys() iter.Seq2[int, T] {
 	return func(yield func(int, T) bool) {
-		for i, v := range om.keys {
-			if !yield(i, v) {
-				return
+		if om != nil {
+			for i, v := range om.keys {
+				if !yield(i, v) {
+					return
+				}
 			}
 		}
 	}
@@ -55,9 +60,11 @@ func (om *OrderedMap[T, V]) IterKeys() iter.Seq2[int, T] {
 
 func (om *OrderedMap[T, V]) Iter() iter.Seq2[T, V] {
 	return func(yield func(T, V) bool) {
-		for _, k := range om.keys {
-			if !yield(k, om.store[k]) {
-				return
+		if om != nil {
+			for _, k := range om.keys {
+				if !yield(k, om.store[k]) {
+					return
+				}
 			}
 		}
 	}

@@ -19,7 +19,7 @@ type TorrserverPaginator struct {
 func NewPaginator(ctx context.Context, b *bot.Bot, update *models.Update) *TorrserverPaginator {
 	var p TorrserverPaginator
 	p = TorrserverPaginator{
-		*paginator.New(ctx, b, update, "torrserver", 4, &p, &p, nil),
+		*paginator.New(ctx, b, update, "torrserver", 4, &p, &p, &p),
 	}
 	return &p
 }
@@ -51,6 +51,11 @@ func (p *TorrserverPaginator) Execute(i int, action string) (unselect bool) {
 		}
 	}
 	return true
+}
+
+// method overload
+func (p *TorrserverPaginator) Stringify(i int, attribute string) string {
+	return ""
 }
 
 // method overload
