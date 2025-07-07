@@ -116,7 +116,7 @@ func httpGet(addUrl string) (*[]byte, error) {
 			}
 			return err
 		},
-		20000,
+		30000,
 	)
 	if err != nil {
 		return nil, err

@@ -82,9 +82,10 @@ func (p *FindPaginator) Line(i int) string {
 // method overload
 func (p *FindPaginator) Stringify(i int, attributeName string) string {
 	item := p.Item(i)
-	if attributeName == "TrackerId" {
+	switch attributeName {
+	case "TrackerId":
 		return item.TrackerId
-	} else if attributeName == "TrackerType" {
+	case "TrackerType":
 		return item.TrackerType
 	}
 	return ""
