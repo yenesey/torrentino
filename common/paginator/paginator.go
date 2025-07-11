@@ -108,8 +108,15 @@ func (p *Paginator) Execute(i int, actionKey string) (unselectItem bool) {
 // ----------END "Actor" interface----------------
 
 func (p *Paginator) ReplyMessage(text string) {
+	var chatId int64
+	if p.message != nil {
+		chatId = p.message.Chat.ID
+	} else {
+		chatId = p.update.Message.Chat.ID
+	}
+
 	_, err := p.bot.SendMessage(p.ctx, &bot.SendMessageParams{
-		ChatID:      p.message.Chat.ID,
+		ChatID:      chatId,
 		Text:        text,
 		ParseMode:   models.ParseModeHTML,
 		ReplyMarkup: nil,
@@ -296,8 +303,8 @@ func (p *Paginator) Show() {
 		}
 		if textChanged {
 			_, err = p.bot.EditMessageText(p.ctx, &bot.EditMessageTextParams{
-				ChatID:    p.message.Chat.ID,
-				MessageID: p.message.ID,
+				ChatID:      p.message.Chat.ID,
+				MessageID:   p.message.ID,
 				Text:        p.text,
 				ParseMode:   models.ParseModeHTML,
 				ReplyMarkup: p.keyboard,
@@ -305,8 +312,8 @@ func (p *Paginator) Show() {
 		}
 		if !textChanged && kbdChanged {
 			_, err = p.bot.EditMessageReplyMarkup(p.ctx, &bot.EditMessageReplyMarkupParams{
-				ChatID:    p.message.Chat.ID,
-				MessageID: p.message.ID,
+				ChatID:      p.message.Chat.ID,
+				MessageID:   p.message.ID,
 				ReplyMarkup: p.keyboard,
 			})
 		}

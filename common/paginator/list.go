@@ -10,15 +10,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Evaluator interface {
+type Evaluator interface { //todo: split on two different interfaces
 	Compare(i int, j int, attribute string) bool
 	Stringify(i int, attribute string) string
 }
 
 type Sorting struct {
-	Attribute  string // attribute name in List.list[] items
-	Alias      string // button text
-	Order      int8   // 0 - unsorted, 1 - desc,  2 - asc
+	Attribute string // attribute name in List.list[] items
+	Alias     string // button text
+	Order     int8   // 0 - unsorted, 1 - desc,  2 - asc
 }
 
 type List struct {

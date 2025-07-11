@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 var sizes = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB"}
@@ -114,7 +116,7 @@ func WithTimeout(cbfn func() error, ms time.Duration) error {
 	case <-done:
 		return err
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Wrap(ctx.Err(), "operation timeout")
 	}
 
 }
