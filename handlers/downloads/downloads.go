@@ -108,7 +108,7 @@ func (p *ListPaginator) Line(i int) string {
 func (p *ListPaginator) Footer() string {
 
 	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(common.Settings.Download_dir, &fs)
+	err := syscall.Statfs(common.Settings.Path.Default, &fs)
 	if err != nil {
 		return ""
 	}
@@ -184,9 +184,9 @@ func (p *ListPaginator) Execute(i int, action string) (unselect bool) {
 			err = transmission.Delete(*item.ID)
 		} else {
 			if item.IsDir {
-				err = os.RemoveAll(common.Settings.Download_dir + "/" + *item.Name)
+				err = os.RemoveAll(path.Join(*item.DownloadDir, *item.Name))
 			} else {
-				err = os.Remove(common.Settings.Download_dir + "/" + *item.Name)
+				err = os.Remove(path.Join(*item.DownloadDir, *item.Name))
 			}
 		}
 		if err == nil {
@@ -232,57 +232,61 @@ func (p *ListPaginator) Reload() error {
 		torrentNames[*listItems[i].Name] = true
 	}
 
-	dir, err := utils.ReadDir(common.Settings.Download_dir, false)
-	if err != nil {
-		utils.LogError(err)
-	} else {
+	readDir := func(targetDir string) {
+		dir, err := utils.ReadDir(targetDir, false)
+		if err != nil {
+			utils.LogError(err)
+		} else {
 
-		for dirEntry := range dir {
-
-			if _, ok := torrentNames[dirEntry.Name]; !ok {
-				name := dirEntry.Name
-				size := int64(dirEntry.Size)
-				status := transmissionrpc.TorrentStatus(404)
-				modTime := dirEntry.ModTime
-				zero := float64(0.0)
-				ext := strings.ToLower(filepath.Ext(dirEntry.Name))
-				extCount := 0
-
-				extCounter := collections.NewCounter()
-				if dirEntry.IsDir {
-					if subDirsWalk, err := utils.ReadDir(path.Join(common.Settings.Download_dir, name), true); err == nil {
-						for subs := range subDirsWalk {
-							extCounter.Add(filepath.Ext(subs.Name))
-							size += subs.Size
+			for dirEntry := range dir {
+				if _, ok := torrentNames[dirEntry.Name]; !ok {
+					name := dirEntry.Name
+					size := int64(dirEntry.Size)
+					status := transmissionrpc.TorrentStatus(404)
+					modTime := dirEntry.ModTime
+					zero := float64(0.0)
+					ext := strings.ToLower(filepath.Ext(dirEntry.Name))
+					extCount := 0
+					extCounter := collections.NewCounter()
+					if dirEntry.IsDir {
+						if subDirsWalk, err := utils.ReadDir(path.Join(targetDir, name), true); err == nil {
+							for subs := range subDirsWalk {
+								extCounter.Add(filepath.Ext(subs.Name))
+								size += subs.Size
+							}
+						} else {
+							utils.LogError(err)
 						}
-					} else {
-						utils.LogError(err)
 					}
-				}
-				if extCounter.Len() > 0 {
-					mostCommon := extCounter.MostCommon(1)[0]
-					ext = strings.ToLower(mostCommon.Key.(string))
-					extCount = mostCommon.Value
-				}
+					if extCounter.Len() > 0 {
+						mostCommon := extCounter.MostCommon(1)[0]
+						ext = strings.ToLower(mostCommon.Key.(string))
+						extCount = mostCommon.Value
+					}
 
-				listItems = append(listItems,
-					ListItem{
-						transmissionrpc.Torrent{
-							Name:           &name,
-							DownloadedEver: &size,
-							Status:         &status,
-							PercentDone:    &zero,
-							UploadRatio:    &zero,
-							AddedDate:      &modTime,
-						},
-						ext,
-						extCount,
-						dirEntry.IsDir,
-						"unknown",
-					})
+					listItems = append(listItems,
+						ListItem{
+							transmissionrpc.Torrent{
+								Name:           &name,
+								DownloadedEver: &size,
+								Status:         &status,
+								PercentDone:    &zero,
+								UploadRatio:    &zero,
+								AddedDate:      &modTime,
+								DownloadDir:    &targetDir,
+							},
+							ext,
+							extCount,
+							dirEntry.IsDir,
+							"unknown",
+						})
+				}
 			}
 		}
 	}
+	readDir(common.Settings.Path.Default)
+	readDir(common.Settings.Path.Movie)
+	readDir(common.Settings.Path.Series)
 
 	p.Alloc(len(listItems))
 	for i := range listItems {

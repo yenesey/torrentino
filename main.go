@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"slices"
 	"log"
 	"os"
 	"os/signal"
+	"slices"
 
 	"torrentino/common"
 	"torrentino/handlers/downloads"
@@ -24,7 +24,7 @@ func main() {
 
 	opts := []bot.Option{
 		bot.WithSkipGetMe(),
-		bot.WithMiddlewares( func(next bot.HandlerFunc) bot.HandlerFunc {
+		bot.WithMiddlewares(func(next bot.HandlerFunc) bot.HandlerFunc {
 			return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 				if (update != nil) && (update.Message != nil) {
 					if slices.Index(common.Settings.Users_list, update.Message.From.ID) == -1 {
@@ -47,8 +47,8 @@ func main() {
 
 	b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
 		Commands: []models.BotCommand{
-			{Command: "/downloads", Description: "list downloads"},
-			{Command: "/torrserver", Description: "list torrserver"},
+			{Command: "/downloads", Description: "Downloads"},
+			{Command: "/torrserver", Description: "Torrserver"},
 		},
 	})
 

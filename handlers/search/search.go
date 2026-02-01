@@ -8,8 +8,6 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	gotorrentparser "github.com/j-muller/go-torrent-parser"
-	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 
 	"torrentino/api/jackett"
@@ -115,21 +113,23 @@ func (p *FindPaginator) Compare(i int, j int, attribute string) bool {
 func (p *FindPaginator) Actions(i int) (result []string) {
 
 	item := p.Item(i)
-	if item.InfoHash == "" && item.Link != "" {
-		res, err := http.Get(item.Link)
-		if err != nil {
-			utils.LogError(err)
-		} else if res.StatusCode != 200 {
-			utils.LogError(errors.New(res.Status + " (request Jackett by item url)"))
-		} else {
-			torrent, err := gotorrentparser.Parse(res.Body)
-			if err != nil {
-				utils.LogError(err)
-			} else {
-				item.InfoHash = torrent.InfoHash
-			}
-		}
-	}
+	/*
+		 Тормоза, если трекер глючит. Выпилить - не стоит оно того
+			if item.InfoHash == "" && item.Link != "" {
+				res, err := http.Get(item.Link)
+				if err != nil {
+					utils.LogError(err)
+				} else if res.StatusCode != 200 {
+					utils.LogError(errors.New(res.Status + " (request Jackett by item url)"))
+				} else {
+					torrent, err := gotorrentparser.Parse(res.Body)
+					if err != nil {
+						utils.LogError(err)
+					} else {
+						item.InfoHash = torrent.InfoHash
+					}
+				}
+			}*/
 
 	if p.transmissionHashes[item.InfoHash] {
 		item.InTorrents = true
@@ -140,6 +140,8 @@ func (p *FindPaginator) Actions(i int) (result []string) {
 
 	if !item.InTorrents {
 		result = append(result, "download")
+		result = append(result, "download:series")
+		result = append(result, "download:movie")
 	}
 	if !item.InTorrserver {
 		result = append(result, "torrsrv")
@@ -168,10 +170,17 @@ func (p *FindPaginator) Execute(i int, action string) (unselect bool) {
 	var err error
 	switch action {
 	case "download":
-		if _, err = transmission.Add(urlOrMagnet); err == nil {
+		if _, err = transmission.Add(urlOrMagnet, common.Settings.Path.Default); err == nil {
 			item.InTorrents = true
 		}
-
+	case "download:series":
+		if _, err = transmission.Add(urlOrMagnet, common.Settings.Path.Series); err == nil {
+			item.InTorrents = true
+		}
+	case "download:movie":
+		if _, err = transmission.Add(urlOrMagnet, common.Settings.Path.Movie); err == nil {
+			item.InTorrents = true
+		}
 	case "torrsrv":
 		if err = torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details, item.TrackerId)); err == nil {
 			item.InTorrserver = true

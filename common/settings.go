@@ -23,7 +23,11 @@ type SettingsStruct struct {
 	Torrserver         hostPort
 	Telegram_api_token string
 	Users_list         []int64
-	Download_dir       string
+	Path struct {
+		Default string
+		Movie string
+		Series string
+	}
 }
 
 var Settings SettingsStruct
