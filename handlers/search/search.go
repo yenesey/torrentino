@@ -113,23 +113,15 @@ func (p *FindPaginator) Compare(i int, j int, attribute string) bool {
 func (p *FindPaginator) Actions(i int) (result []string) {
 
 	item := p.Item(i)
-	/*
-		 Тормоза, если трекер глючит. Выпилить - не стоит оно того
-			if item.InfoHash == "" && item.Link != "" {
-				res, err := http.Get(item.Link)
-				if err != nil {
-					utils.LogError(err)
-				} else if res.StatusCode != 200 {
-					utils.LogError(errors.New(res.Status + " (request Jackett by item url)"))
-				} else {
-					torrent, err := gotorrentparser.Parse(res.Body)
-					if err != nil {
-						utils.LogError(err)
-					} else {
-						item.InfoHash = torrent.InfoHash
-					}
-				}
-			}*/
+
+	if item.InfoHash == "" && item.Link != "" {
+		infoHash, err := jackett.GetInfoHash(item.Link)
+		if err != nil {
+			utils.LogError(err)
+		} else {
+			item.InfoHash = infoHash
+		}
+	}
 
 	if p.transmissionHashes[item.InfoHash] {
 		item.InTorrents = true
@@ -230,7 +222,11 @@ func (p *FindPaginator) Reload() error {
 	p.Alloc(len(*result))
 	for i := range *result {
 		hash := (*result)[i].InfoHash
-		p.Append(&ListItem{(*result)[i], p.transmissionHashes[hash], p.torrserverHashes[hash]})
+		p.Append(&ListItem{
+			(*result)[i],
+			p.transmissionHashes[hash],
+			p.torrserverHashes[hash],
+		})
 	}
 	return nil
 

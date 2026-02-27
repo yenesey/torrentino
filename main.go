@@ -27,7 +27,7 @@ func main() {
 		bot.WithMiddlewares(func(next bot.HandlerFunc) bot.HandlerFunc {
 			return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 				if (update != nil) && (update.Message != nil) {
-					if slices.Index(common.Settings.Users_list, update.Message.From.ID) == -1 {
+					if slices.Index(common.Settings.UsersList, update.Message.From.ID) == -1 {
 						log.Printf("%d (%s) say: %s", update.Message.From.ID, update.Message.From.Username, update.Message.Text)
 						return
 					}
@@ -40,7 +40,7 @@ func main() {
 		bot.WithMessageTextHandler("/torrserver", bot.MatchTypeExact, torrserver.Handler),
 	}
 
-	b, err := bot.New(common.Settings.Telegram_api_token, opts...)
+	b, err := bot.New(common.Settings.TelegramAPIToken, opts...)
 	if nil != err {
 		log.Fatal(err)
 	}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"torrentino/common"
 	"torrentino/common/utils"
@@ -60,7 +61,7 @@ func List() (*[]TSListItem, error) {
 			}
 			return err
 		},
-		2000,
+		3*time.Second,
 	)
 	if err != nil {
 		return nil, err
@@ -103,7 +104,7 @@ func Add(link string, title string, poster string) error {
 			}
 			return err
 		},
-		2000,
+		3*time.Second,
 	)
 }
 
@@ -123,5 +124,5 @@ func Delete(hash string) error {
 			}
 			return err
 		},
-		2000)
+		3*time.Second)
 }
