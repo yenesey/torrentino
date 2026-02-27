@@ -4,26 +4,34 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/pkg/errors"
 	"torrentino/common/utils"
+
+	"github.com/pkg/errors"
 )
 
 type hostPort struct {
-	Host string
-	Port int
+	Host string `json:"host"`
+	Port int    `json:"port"`
 }
 
 type SettingsStruct struct {
 	Jackett struct {
-		hostPort
-		Api_key  string
-		Indexers []string
-	}
-	Transmission       hostPort
-	Torrserver         hostPort
-	Telegram_api_token string
-	Users_list         []int64
-	Download_dir       string
+		hostPort `json:",inline"`
+		APIKey   string   `json:"api-key"`
+		Indexers []string `json:"indexers"`
+	} `json:"jackett"`
+
+	Transmission hostPort `json:",inline"`
+	Torrserver   hostPort `json:",inline"`
+
+	TelegramAPIToken string  `json:"telegram-api-token"`
+	UsersList        []int64 `json:"users-list"`
+
+	Path struct {
+		Default string `json:"default"`
+		Movie   string `json:"movie"`
+		Series  string `json:"series"`
+	} `json:"path"`
 }
 
 var Settings SettingsStruct

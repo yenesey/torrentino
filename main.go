@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"slices"
 	"log"
 	"os"
 	"os/signal"
+	"slices"
 
 	"torrentino/common"
 	"torrentino/handlers/downloads"
@@ -24,10 +24,10 @@ func main() {
 
 	opts := []bot.Option{
 		bot.WithSkipGetMe(),
-		bot.WithMiddlewares( func(next bot.HandlerFunc) bot.HandlerFunc {
+		bot.WithMiddlewares(func(next bot.HandlerFunc) bot.HandlerFunc {
 			return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 				if (update != nil) && (update.Message != nil) {
-					if slices.Index(common.Settings.Users_list, update.Message.From.ID) == -1 {
+					if slices.Index(common.Settings.UsersList, update.Message.From.ID) == -1 {
 						log.Printf("%d (%s) say: %s", update.Message.From.ID, update.Message.From.Username, update.Message.Text)
 						return
 					}
@@ -40,15 +40,15 @@ func main() {
 		bot.WithMessageTextHandler("/torrserver", bot.MatchTypeExact, torrserver.Handler),
 	}
 
-	b, err := bot.New(common.Settings.Telegram_api_token, opts...)
+	b, err := bot.New(common.Settings.TelegramAPIToken, opts...)
 	if nil != err {
 		log.Fatal(err)
 	}
 
 	b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
 		Commands: []models.BotCommand{
-			{Command: "/downloads", Description: "list downloads"},
-			{Command: "/torrserver", Description: "list torrserver"},
+			{Command: "/downloads", Description: "Downloads"},
+			{Command: "/torrserver", Description: "Torrserver"},
 		},
 	})
 

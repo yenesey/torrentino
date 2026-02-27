@@ -11,9 +11,10 @@ import (
 
 var Transmission *transmissionrpc.Client
 
-func Add(torrentUrlOrMagnet string) (torrent transmissionrpc.Torrent, err error) {
+func Add(torrentUrlOrMagnet string, downloadDir string) (torrent transmissionrpc.Torrent, err error) {
 	torrent, err = Transmission.TorrentAdd(context.TODO(), transmissionrpc.TorrentAddPayload{
 		Filename: &torrentUrlOrMagnet,
+		DownloadDir: &downloadDir,
 	})
 	return
 }

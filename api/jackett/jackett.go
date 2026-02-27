@@ -1,6 +1,7 @@
 package jackett
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	gotorrentparser "github.com/j-muller/go-torrent-parser"
 	"github.com/pkg/errors"
 
 	"torrentino/common"
@@ -99,11 +101,11 @@ var apiKey string
 var baseUrl string
 var client *http.Client
 
-func httpGet(addUrl string) (*[]byte, error) {
+func httpGet(url string, timeout time.Duration) (*[]byte, error) {
 	var res *http.Response
 	err := utils.WithTimeout(
 		func() error {
-			req, err := http.NewRequest("GET", baseUrl+addUrl, nil)
+			req, err := http.NewRequest("GET", url, nil)
 			if err != nil {
 				return err
 			}
@@ -112,11 +114,11 @@ func httpGet(addUrl string) (*[]byte, error) {
 				return err
 			}
 			if res != nil && res.StatusCode != 200 {
-				return fmt.Errorf("request error: %s", res.Status)
+				return fmt.Errorf("Request error: %s", res.Status)
 			}
 			return err
 		},
-		30000,
+		timeout,
 	)
 	if err != nil {
 		return nil, err
@@ -126,24 +128,32 @@ func httpGet(addUrl string) (*[]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &data, nil
 }
 
 func GetValidIndexers() (*[]Indexer, error) {
 	var r []Indexer
-
-	data, err := httpGet("indexers?Configured=true")
+	data, err := httpGet("indexers?Configured=true", 30*time.Second)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetValidIndexers")
 	}
-
 	err = json.Unmarshal(*data, &r)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetValidIndexers")
 	}
-
 	return &r, nil
+}
+
+func GetInfoHash(url string) (string, error) {
+	res, err := httpGet(url, 5*time.Second)
+	if err != nil {
+		return "", err
+	}
+	torrent, err := gotorrentparser.Parse(bytes.NewReader(*res))
+	if err != nil {
+		return "", err
+	}
+	return torrent.InfoHash, nil
 }
 
 func Query(str string, indexers []string) (*[]Result, error) {
@@ -153,7 +163,7 @@ func Query(str string, indexers []string) (*[]Result, error) {
 		u = u + "&Tracker[]=" + indexer
 	}
 	u = u + "&Query=" + url.QueryEscape(str)
-	data, err := httpGet(u)
+	data, err := httpGet(baseUrl+u, 30*time.Second)
 	if err != nil {
 		return nil, errors.Wrap(err, "Jackett")
 	}
@@ -168,7 +178,7 @@ func Query(str string, indexers []string) (*[]Result, error) {
 
 func init() {
 	var jkt = &common.Settings.Jackett
-	apiKey = jkt.Api_key
+	apiKey = jkt.APIKey
 	baseUrl = "http://" + jkt.Host + ":" + strconv.Itoa(jkt.Port) + "/api/v2.0/"
 	jar, err := cookiejar.New(nil)
 	if err != nil {

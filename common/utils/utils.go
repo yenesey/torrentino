@@ -100,20 +100,17 @@ func LogError(err error) {
 	log.Printf("[%s/%s(%s)] %s: %s", parts[0][11:], fileName, strconv.Itoa(line), funcName, err)
 }
 
-func WithTimeout(cbfn func() error, ms time.Duration) error {
-	var err error
-	ctx, cancel := context.WithTimeout(context.Background(), ms*time.Millisecond)
+func WithTimeout(cbfn func() error, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	done := make(chan struct{}, 1)
+	done := make(chan error, 1)
 
 	go func() {
-		err = cbfn()
-		done <- struct{}{}
-		close(done)
+		done <- cbfn()
 	}()
 
 	select {
-	case <-done:
+	case err := <-done:
 		return err
 	case <-ctx.Done():
 		return errors.Wrap(ctx.Err(), "operation timeout")
