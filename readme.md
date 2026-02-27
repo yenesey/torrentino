@@ -20,7 +20,7 @@ Integrates with:
     "jackett" : {
         "host" : "host_name_or_ip",
         "port" : 9117,
-        "api_key" : "***",
+        "api-key" : "***",
         "indexers" : []
     },
     "transmission" : {
@@ -31,8 +31,8 @@ Integrates with:
         "host" : "host_name_or_ip",
         "port" : 8090
     },
-    "telegram_api_token" : "***",
-    "users_list" : [],
+    "telegram-api-token" : "***",
+    "users-list" : [],
     "download_dir" : ""
 }
 ```
