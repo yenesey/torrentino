@@ -43,6 +43,35 @@ var url = "http://" + common.Settings.Torrserver.Host + ":" + strconv.Itoa(commo
    }
 */
 
+
+func httPost(url string, json string, timeout time.Duration) (*[]byte, error) {
+	var res *http.Response
+	var data []byte
+	err := utils.WithTimeout(
+		func() error {
+			res, err := http.Post(
+				url,
+				"application/json",
+				strings.NewReader(json),
+			)
+			if res != nil && res.StatusCode != 200 {
+				return fmt.Errorf("request error: %s", res.Status)
+			}
+			return err
+		},
+		timeout,
+	)
+	if err != nil {
+		return nil, err
+	}
+	// defer res.Body.Close()
+	data, err = io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	return &data, nil
+}
+
 func List() (*[]TSListItem, error) {
 	var res *http.Response
 	var err error
