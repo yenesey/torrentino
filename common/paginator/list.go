@@ -132,6 +132,12 @@ func (ls *List) SetupFiltering(attributes []string) {
 }
 
 func (ls *List) ToggleFilter(attribute string, value string) {
+	// SetupFiltering is not called by every screen (e.g. /torrserver has no
+	// filters), so a forged callback for a filter that does not exist must be a
+	// no-op rather than a nil map access.
+	if ls.filters == nil {
+		return
+	}
 	if buttons, ok := ls.filters.Get(attribute); ok {
 		if enabled, ok := buttons.Get(value); ok {
 			buttons.Set(value, !enabled)
@@ -151,6 +157,11 @@ func (ls *List) SetupSorting(attributes []Sorting) {
 }
 
 func (ls *List) ToggleSorting(attribute string) {
+	// Same reasoning as ToggleFilter: without SetupSorting there is nothing to
+	// toggle, and a forged callback must not dereference a nil ordered map.
+	if ls.sorting.attributes == nil {
+		return
+	}
 	h, ok := ls.sorting.attributes.Get(attribute)
 	if !ok {
 		utils.LogError(errors.New(fmt.Sprintf("attribute %s not found", attribute)))

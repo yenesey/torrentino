@@ -14,8 +14,8 @@
 - **Torrserver** — стриминг видео без полной загрузки (add/list/rem).
 
 Репозиторий: `github.com/yenesey/torrentino`. Модуль: `torrentino`. Go 1.24 (`toolchain go1.24.0`).
-Объём — ~2000 строк Go. Тесты точечные: `common/settings_test.go` и
-`api/torrserver/torrserver_test.go`.
+Объём — ~2000 строк Go. Тесты точечные: `common/settings_test.go`,
+`common/paginator/paginator_test.go` и `api/torrserver/torrserver_test.go`.
 
 ## Сборка и запуск
 
@@ -38,8 +38,9 @@ go build -v -ldflags "-s -w"   # релизная сборка (как в update
 Если конфига нет или он невалиден, бот не стартует: печатает диагностику и выходит
 с кодом 1 (см. п. 1 подводных камней).
 
-Линтер-конфигов в проекте нет. Тестов немного, они покрывают загрузку/валидацию конфига
-и сборку запросов к Torrserver; остальное проверяется вручную в Telegram.
+Линтер-конфигов в проекте нет. Тестов немного: загрузка/валидация конфига, разбор
+callback-данных пагинатора и сборка запросов к Torrserver; остальное проверяется вручную
+в Telegram.
 
 ## Структура
 
@@ -52,6 +53,7 @@ common/
   utils/utils.go            FormatFileSize, ReadDir (канал), WithTimeout, LogError
   ordmap/ordmap.go          generic-ordered map с iter.Seq2 (итераторы Go 1.23+)
   paginator/paginator.go    ядро UI: сообщение + inline-клавиатура, пагинация, сортировка, фильтры, действия
+  paginator/paginator_test.go тесты разбора callback-данных (через dispatch, без бота)
   paginator/list.go         List: срез индексов, Evaluator, Sorting, очередь мультисортировки
 api/
   jackett/jackett.go        поиск, парсинг .torrent для InfoHash, cookiejar
@@ -151,9 +153,21 @@ update-service.sh           сборка → stop → mv в /opt/torrentino → 
 6. **Удаление файлов.** В `handlers/downloads` для позиций со статусом `unknown`
    (файлы на диске, которых нет в Transmission) действие `delete` вызывает
    `os.Remove`/`os.RemoveAll` напрямую — это необратимо.
-7. **Хрупкий разбор callback.** `callbackHandler` обращается к `cmd[0]` без проверки длины
-   (паника на пустых данных) и сравнивает байт с `unicode.IsNumber(rune(cmd[0]))` —
-   работает только для ASCII-цифр.
+7. **Разбор callback-данных** (исправлено в `Paginator.dispatch`, есть тесты в
+   `paginator_test.go`). Прежний `callbackHandler` падал на данных, которые Telegram
+   вполне может доставить: `cmd[0]` без проверки длины — паника на пустом callback,
+   `strings.Split(payload, "/")` + `split[1]` — паника на команде фильтра без
+   разделителя, `p.selectedItem` без границ — паника в `Actor.Execute`, если список
+   успел сократиться, и `unicode.IsNumber(rune(cmd[0]))` с `strconv.Atoi` без проверки
+   ошибки — «12abc» молча выбирал элемент 0. Сейчас: `parseItemIndex` принимает только
+   ASCII-цифры и проверяет переполнение, индекс сверяется с `Len()`, команды с payload
+   разбираются через `strings.CutPrefix` / `strings.Cut`, а индекс проверяется ещё раз
+   перед `Execute`. Паника в горутине обработчика убивает весь процесс, а systemd
+   (`Restart=always`) превращает это в цикл перезапусков — поэтому здесь не должно быть
+   ни одного индексирования без проверки.
+   `Paginator.lastPage()` — единственный источник истины о последней странице: раньше
+   кнопка «➡» и её обработчик считали её разными формулами, и нажатие могло увести на
+   пустую страницу. Тесты дёргают `dispatch` напрямую, без бота и сети.
 8. **Transmission:** учётные данные захардкожены как `rpcuser`/`rpcpass`
    (`api/transmission/transmission.go`), в коде есть закомментированный `todo` про
    `transmissionrpc/v3`. RPC-клиент создаётся лениво через `sync.Once` и запоминает хост
@@ -178,6 +192,17 @@ update-service.sh           сборка → stop → mv в /opt/torrentino → 
     сейчас URL достроен до абсолютного. Мораль та же, что с `httPost`: неиспользуемые
     функции `go vet` не помечает, поэтому их надо искать глазами или через staticcheck
     (U1000).
+13. **Callback-запросы обходят ACL (не исправлено).** Middleware доступа в `main.go`
+    проверяет `users-list` только внутри `if update.Message != nil`, а у нажатия на
+    кнопку `update.Message == nil`, поэтому проверка пропускается и
+    `Paginator.callbackHandler` выполняется для любого нажатия. Получить клавиатуру
+    посторонний не может (бот шлёт сообщения только в разрешённые чаты), но у **удалённого
+    из `users-list` пользователя** старые сообщения с кнопками остаются живыми, и он
+    продолжает управлять ботом — а состояние экранов глобальное (п. 4), так что это
+    затрагивает и остальных. Лечится распространением той же проверки на
+    `update.CallbackQuery.From.ID`; сделать это стоит осознанно, потому что это меняет
+    модель доступа (например, в групповом чате жать кнопки сможет только тот, кто есть
+    в `users-list`).
 
 ## Деплой
 

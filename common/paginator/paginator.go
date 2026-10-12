@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -248,7 +247,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 			[2]buttonData{{"⬅", p.prefix + CB_PREV_PAGE}, {"-", p.prefix + CB_STUB}}),
 		chooseButton(p.extControls,
 			[2]buttonData{{"🔺", p.prefix + CB_TOGGLE_FILTERS}, {"🔻", p.prefix + CB_TOGGLE_FILTERS}}),
-		chooseButton(p.activePage < ((p.Len()-1)/p.itemsPerPage),
+		chooseButton(p.activePage < p.lastPage(),
 			[2]buttonData{{"➡", p.prefix + CB_NEXT_PAGE}, {"-", p.prefix + CB_STUB}}),
 	}
 	keyboard = append(keyboard, row)
@@ -323,53 +322,119 @@ func (p *Paginator) Show() {
 	}
 }
 
+// lastPage is the index of the final page. The "next" button and its handler
+// must agree on this value, otherwise a press can move past the last non-empty
+// page and show an empty list.
+func (p *Paginator) lastPage() int {
+	if p.itemsPerPage <= 0 || p.Len() == 0 {
+		return 0
+	}
+	return (p.Len() - 1) / p.itemsPerPage
+}
+
+// parseItemIndex reports whether the command is a plain decimal item index.
+// Only ASCII digits are accepted: the keyboard generates these values itself,
+// so anything else is stale or forged data that must not be interpreted.
+func parseItemIndex(cmd string) (int, bool) {
+	if cmd == "" {
+		return 0, false
+	}
+	for i := 0; i < len(cmd); i++ {
+		if cmd[i] < '0' || cmd[i] > '9' {
+			return 0, false
+		}
+	}
+	item, err := strconv.Atoi(cmd)
+	if err != nil {
+		return 0, false
+	}
+	return item, true
+}
+
 func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update == nil || update.CallbackQuery == nil {
+		return
+	}
 
 	cmd := strings.TrimPrefix(update.CallbackQuery.Data, p.prefix)
-	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+
+	if _, err := b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 		CallbackQueryID: update.CallbackQuery.ID,
 		Text:            cmd,
 		ShowAlert:       false,
-	})
+	}); err != nil {
+		utils.LogError(err)
+	}
 
-	if unicode.IsNumber(rune(cmd[0])) {
-		p.selectedItem, _ = strconv.Atoi(cmd)
-		p.extControls = false
+	p.dispatch(cmd)
+	p.Show()
+}
+
+// dispatch applies a single button press.
+//
+// Callback data comes back from Telegram and can be empty, malformed or stale
+// (a message from an older build, a list that shrank since the keyboard was
+// drawn), so every branch validates its input. Indexing into the command string
+// or the item list without checking used to panic, and a panic in a handler
+// goroutine takes down the whole bot.
+func (p *Paginator) dispatch(cmd string) {
+
+	if item, ok := parseItemIndex(cmd); ok {
+		if item < p.Len() {
+			p.selectedItem = item
+			p.extControls = false
+		}
+		return
 	}
 
 	switch cmd {
 	case CB_NEXT_PAGE:
-		if p.activePage < (p.Len() / p.itemsPerPage) {
+		if p.activePage < p.lastPage() {
 			p.activePage++
 		}
+		return
 
 	case CB_PREV_PAGE:
 		if p.activePage > 0 {
 			p.activePage--
 		}
+		return
 
 	case CB_TOGGLE_FILTERS:
 		p.extControls = !p.extControls
+		return
+
+	case CB_STUB, "": // no-op, but must not fall through to the command parsing
+		return
 	}
 
-	if len(cmd) > 10 {
-		var payload = cmd[10:]
-		switch cmd[0:10] {
+	// Commands carrying a payload: <command><payload>.
+	for _, command := range []string{CB_ORDER_BY, CB_FILTER_BY, CB_ACTION} {
+		payload, ok := strings.CutPrefix(cmd, command)
+		if !ok {
+			continue
+		}
+		switch command {
 		case CB_ORDER_BY:
 			p.ToggleSorting(payload)
 			p.selectedItem = -1
 		case CB_FILTER_BY:
-			split := strings.Split(payload, "/")
-			p.ToggleFilter(split[0], split[1])
+			attribute, value, ok := strings.Cut(payload, "/")
+			if !ok {
+				return
+			}
+			p.ToggleFilter(attribute, value)
 			p.activePage = 0
 			p.selectedItem = -1
 		case CB_ACTION:
-			if p.selectedItem != -1 {
+			// The selection may point outside the list if it was reloaded or
+			// filtered after the keyboard was drawn.
+			if (p.selectedItem >= 0) && (p.selectedItem < p.Len()) {
 				if p.Actor.Execute(p.selectedItem, payload) {
 					p.selectedItem = -1
 				}
 			}
 		}
+		return
 	}
-	p.Show()
 }
