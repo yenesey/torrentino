@@ -97,9 +97,19 @@ type QueryResults struct {
 	Indexers []Indexer
 }
 
-var apiKey string
-var baseUrl string
 var client *http.Client
+
+// baseUrl and apiKey are resolved on every call rather than captured during
+// package initialization: the config is loaded from main(), so values read in
+// init() would be empty.
+func baseUrl() string {
+	return "http://" + common.Settings.Jackett.Host + ":" +
+		strconv.Itoa(common.Settings.Jackett.Port) + "/api/v2.0/"
+}
+
+func apiKey() string {
+	return common.Settings.Jackett.APIKey
+}
 
 func httpGet(url string, timeout time.Duration) (*[]byte, error) {
 	var res *http.Response
@@ -133,7 +143,7 @@ func httpGet(url string, timeout time.Duration) (*[]byte, error) {
 
 func GetValidIndexers() (*[]Indexer, error) {
 	var r []Indexer
-	data, err := httpGet("indexers?Configured=true", 30*time.Second)
+	data, err := httpGet(baseUrl()+"indexers?Configured=true", 30*time.Second)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetValidIndexers")
 	}
@@ -158,12 +168,12 @@ func GetInfoHash(url string) (string, error) {
 
 func Query(str string, indexers []string) (*[]Result, error) {
 
-	var u = "indexers/status:healthy,test:passed/results?apikey=" + apiKey
+	var u = "indexers/status:healthy,test:passed/results?apikey=" + apiKey()
 	for _, indexer := range indexers {
 		u = u + "&Tracker[]=" + indexer
 	}
 	u = u + "&Query=" + url.QueryEscape(str)
-	data, err := httpGet(baseUrl+u, 30*time.Second)
+	data, err := httpGet(baseUrl()+u, 30*time.Second)
 	if err != nil {
 		return nil, errors.Wrap(err, "Jackett")
 	}
@@ -177,9 +187,6 @@ func Query(str string, indexers []string) (*[]Result, error) {
 }
 
 func init() {
-	var jkt = &common.Settings.Jackett
-	apiKey = jkt.APIKey
-	baseUrl = "http://" + jkt.Host + ":" + strconv.Itoa(jkt.Port) + "/api/v2.0/"
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		log.Fatalf("error creating cookie jar %s", err.Error())

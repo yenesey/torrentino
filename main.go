@@ -17,6 +17,8 @@ import (
 )
 
 func main() {
+	common.MustLoadSettings()
+
 	log.Println("[Torrentino]: startup")
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)

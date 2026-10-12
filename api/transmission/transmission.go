@@ -2,56 +2,84 @@ package transmission
 
 import (
 	"context"
-	"log"
+	"sync"
 
 	"github.com/hekmon/transmissionrpc/v2"
 
 	"torrentino/common"
 )
 
-var Transmission *transmissionrpc.Client
+var (
+	rpcClient     *transmissionrpc.Client
+	rpcClientOnce sync.Once
+	rpcClientErr  error
+)
+
+// client builds the RPC client on first use instead of during package
+// initialization: the config is loaded from main(), so a client created in
+// init() would point at an empty host. The construction error is returned to
+// the caller rather than terminating the process, which also keeps the package
+// importable from tests.
+func client() (*transmissionrpc.Client, error) {
+	rpcClientOnce.Do(func() {
+		/* todo: transmissionrpc/v3
+		endpoint, err := url.Parse("http://" + trn.Host + ":" + strconv.Itoa(trn.Port) + "/transmission/rpc")
+		if err != nil {
+		    log.Fatal(err)
+		}
+		rpcClient, rpcClientErr = transmissionrpc.New(endpoint, nil)
+		*/
+		rpcClient, rpcClientErr = transmissionrpc.New(common.Settings.Transmission.Host, "rpcuser", "rpcpass", nil)
+	})
+	return rpcClient, rpcClientErr
+}
 
 func Add(torrentUrlOrMagnet string, downloadDir string) (torrent transmissionrpc.Torrent, err error) {
-	torrent, err = Transmission.TorrentAdd(context.TODO(), transmissionrpc.TorrentAddPayload{
-		Filename: &torrentUrlOrMagnet,
+	c, err := client()
+	if err != nil {
+		return torrent, err
+	}
+	return c.TorrentAdd(context.TODO(), transmissionrpc.TorrentAddPayload{
+		Filename:    &torrentUrlOrMagnet,
 		DownloadDir: &downloadDir,
 	})
-	return
 }
 
 func Delete(torrentId int64) (err error) {
-	return Transmission.TorrentRemove(context.TODO(), transmissionrpc.TorrentRemovePayload{
+	c, err := client()
+	if err != nil {
+		return err
+	}
+	return c.TorrentRemove(context.TODO(), transmissionrpc.TorrentRemovePayload{
 		IDs:             []int64{torrentId},
 		DeleteLocalData: true,
 	})
 }
 
 func Start(torrentId int64) (err error) {
-	return Transmission.TorrentStartIDs(context.TODO(), []int64{torrentId})
+	c, err := client()
+	if err != nil {
+		return err
+	}
+	return c.TorrentStartIDs(context.TODO(), []int64{torrentId})
 }
 
 func Pause(torrentId int64) (err error) {
-	return Transmission.TorrentStopIDs(context.TODO(), []int64{torrentId})
+	c, err := client()
+	if err != nil {
+		return err
+	}
+	return c.TorrentStopIDs(context.TODO(), []int64{torrentId})
 }
 
-func List() (torrents *[]transmissionrpc.Torrent, err error) {
-	t, err := Transmission.TorrentGetAll(context.TODO())
-	return &t, err
-}
-
-func init() {
-	var trn = &common.Settings.Transmission
-	var err error
-	/* todo: transmissionrpc/v3
-	endpoint, err := url.Parse("http://" + trn.Host + ":" + strconv.Itoa(trn.Port) + "/transmission/rpc")
+func List() (*[]transmissionrpc.Torrent, error) {
+	c, err := client()
 	if err != nil {
-	    log.Fatal(err)
+		return nil, err
 	}
-	Transmission, err = transmissionrpc.New(endpoint, nil)
-	*/
-	Transmission, err = transmissionrpc.New(trn.Host, "rpcuser", "rpcpass", nil)
+	t, err := c.TorrentGetAll(context.TODO())
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-
+	return &t, nil
 }
