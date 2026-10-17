@@ -143,7 +143,7 @@ func httpGet(url string, timeout time.Duration) (*[]byte, error) {
 
 func GetValidIndexers() (*[]Indexer, error) {
 	var r []Indexer
-	data, err := httpGet(baseUrl()+"indexers?Configured=true", 30*time.Second)
+	data, err := httpGet(baseUrl()+"indexers?Configured=true", common.Settings.JackettTimeout())
 	if err != nil {
 		return nil, errors.Wrap(err, "GetValidIndexers")
 	}
@@ -173,7 +173,10 @@ func Query(str string, indexers []string) (*[]Result, error) {
 		u = u + "&Tracker[]=" + indexer
 	}
 	u = u + "&Query=" + url.QueryEscape(str)
-	data, err := httpGet(baseUrl()+u, 30*time.Second)
+	// The deadline is configurable ("jackett.timeout", 60s by default) because
+	// Jackett queries every configured indexer sequentially, and a broad search
+	// over slow trackers easily outlives a single-request timeout.
+	data, err := httpGet(baseUrl()+u, common.Settings.JackettTimeout())
 	if err != nil {
 		return nil, errors.Wrap(err, "Jackett")
 	}

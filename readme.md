@@ -21,7 +21,8 @@ Integrates with:
         "host" : "host_name_or_ip",
         "port" : 9117,
         "api-key" : "***",
-        "indexers" : ["rutor", "rutracker", "kinozal"]
+        "indexers" : ["rutor", "rutracker", "kinozal"],
+        "timeout" : "60s"
     },
     "transmission" : {
         "host" : "host_name_or_ip",
@@ -47,6 +48,10 @@ Where:
  - `jackett.api-key` - API key from the Jackett dashboard
  - `jackett.indexers` - Jackett tracker ids to search in; an empty list sends no
    tracker filter, so all configured indexers are queried
+ - `jackett.timeout` - how long to wait for a Jackett response, as a Go duration
+   (`"60s"`, `"1m30s"`, `"500ms"`); defaults to 60s, because Jackett queries the
+   indexers one by one and a broad search over slow trackers takes a while.
+   A value without a unit (`"60"`) is rejected at startup
  - `path.default` / `path.movie` / `path.series` - download directories used by the
    three download buttons in search results
 

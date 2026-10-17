@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 const validSettings = `{
@@ -82,6 +83,48 @@ func TestLoadSettingsFromIncompleteFile(t *testing.T) {
 	for _, want := range []string{"telegram-api-token", "jackett.host", "jackett.port", "jackett.api-key"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error = %v, want it to report %q", err, want)
+		}
+	}
+}
+
+func withJackettTimeout(t *testing.T, value string) string {
+	t.Helper()
+	return strings.Replace(validSettings,
+		`"indexers": ["rutor"]`,
+		`"indexers": ["rutor"], "timeout": `+value, 1)
+}
+
+// An absent "jackett.timeout" must fall back to 60s: Jackett queries its
+// indexers one by one, so the previous hardcoded 30s cut slow searches off.
+func TestJackettTimeoutDefault(t *testing.T) {
+	if err := LoadSettingsFrom(writeSettings(t, validSettings)); err != nil {
+		t.Fatal(err)
+	}
+	if got := Settings.JackettTimeout(); got != 60*time.Second {
+		t.Errorf("JackettTimeout() = %v, want 60s", got)
+	}
+}
+
+func TestJackettTimeoutFromConfig(t *testing.T) {
+	if err := LoadSettingsFrom(writeSettings(t, withJackettTimeout(t, `"1m30s"`))); err != nil {
+		t.Fatal(err)
+	}
+	if got := Settings.JackettTimeout(); got != 90*time.Second {
+		t.Errorf("JackettTimeout() = %v, want 1m30s", got)
+	}
+}
+
+// A value without a unit is the easiest mistake to make, so it must be
+// reported instead of silently falling back to the default.
+func TestLoadSettingsFromInvalidJackettTimeout(t *testing.T) {
+	for _, value := range []string{`"60"`, `"abc"`, `"0s"`, `"-5s"`} {
+		err := LoadSettingsFrom(writeSettings(t, withJackettTimeout(t, value)))
+		if err == nil {
+			t.Errorf("timeout %s: want an error", value)
+			continue
+		}
+		if !strings.Contains(err.Error(), "jackett.timeout") {
+			t.Errorf("timeout %s: error = %v, want it to name jackett.timeout", value, err)
 		}
 	}
 }

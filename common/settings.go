@@ -8,9 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const settingsFileName = "settings.json"
+
+// DefaultJackettTimeout is used when "jackett.timeout" is not set. Jackett
+// queries its indexers one by one, so a search across several trackers can
+// take much longer than a single HTTP request.
+const DefaultJackettTimeout = 60 * time.Second
 
 type hostPort struct {
 	Host string `json:"host"`
@@ -22,6 +28,9 @@ type SettingsStruct struct {
 		hostPort `json:",inline"`
 		APIKey   string   `json:"api-key"`
 		Indexers []string `json:"indexers"`
+		// Timeout is a Go duration string ("60s", "1m30s"). Empty means
+		// DefaultJackettTimeout.
+		Timeout string `json:"timeout"`
 	} `json:"jackett"`
 
 	Transmission hostPort `json:",inline"`
@@ -60,6 +69,18 @@ func MustLoadSettings() {
 	if err := LoadSettings(); err != nil {
 		log.Fatalf("[Torrentino]: startup failed: %s", err)
 	}
+}
+
+// JackettTimeout is the deadline for a Jackett API request. It is parsed on
+// every call rather than cached at startup, because the config is loaded in
+// main(); validate() has already rejected unparsable values.
+func (s *SettingsStruct) JackettTimeout() time.Duration {
+	value := strings.TrimSpace(s.Jackett.Timeout)
+	d, err := time.ParseDuration(value)
+	if err != nil || d <= 0 {
+		return DefaultJackettTimeout
+	}
+	return d
 }
 
 func loadSettings(fileName string) error {
@@ -126,6 +147,15 @@ func (s *SettingsStruct) validate() error {
 	problems = append(problems, s.Jackett.problems("jackett")...)
 	if strings.TrimSpace(s.Jackett.APIKey) == "" {
 		problems = append(problems, `"jackett.api-key" is empty, copy it from the Jackett dashboard`)
+	}
+	if value := strings.TrimSpace(s.Jackett.Timeout); value != "" {
+		if d, err := time.ParseDuration(value); err != nil {
+			problems = append(problems, fmt.Sprintf(
+				`"jackett.timeout" is not a duration: %q, expected a value like "60s" or "1m30s"`, value))
+		} else if d <= 0 {
+			problems = append(problems, fmt.Sprintf(
+				`"jackett.timeout" must be positive, got %q`, value))
+		}
 	}
 
 	problems = append(problems, s.Transmission.problems("transmission")...)
