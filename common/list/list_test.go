@@ -252,3 +252,45 @@ func TestDeleteOutOfRangeIsNoop(t *testing.T) {
 		t.Errorf("Len = %d after delete, want 1", v.Len())
 	}
 }
+
+// listAwareEvaluator mimics the web/Telegram screens: Stringify receives a
+// view position and calls ItemAt, so it depends on index being consistent with
+// the current list length.
+type listAwareEvaluator struct {
+	list *List
+}
+
+func (e listAwareEvaluator) Compare(i, j int, attribute string) bool { return false }
+
+func (e listAwareEvaluator) Stringify(i int, attribute string) string {
+	item, _ := e.list.ItemAt(i).(*testItem)
+	if item == nil {
+		return ""
+	}
+	if attribute == "Group" {
+		return item.group
+	}
+	return ""
+}
+
+// Regression test: Delete used to call Filter while the old (longer) index was
+// still installed; Stringify -> ItemAt -> Item then indexed past the shortened
+// list. This reproduced as index out of range [47] with length 47 on the live
+// downloads screen.
+func TestDeleteWithViewAwareFilterDoesNotPanic(t *testing.T) {
+	items := make([]*testItem, 48)
+	for i := range items {
+		items[i] = &testItem{name: "item", group: "g", size: i}
+	}
+	v := NewView(20)
+	v.List.Evaluator = listAwareEvaluator{list: &v.List}
+	v.SetupFiltering([]string{"Group"})
+	for _, item := range items {
+		v.Append(item)
+	}
+	v.Filter()
+	v.Delete(0)
+	if v.Len() != 47 {
+		t.Fatalf("Len = %d, want 47", v.Len())
+	}
+}

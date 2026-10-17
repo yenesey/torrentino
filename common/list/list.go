@@ -92,6 +92,15 @@ func (ls *List) ItemAt(i int) any {
 }
 
 func (ls *List) Filter() {
+	// Reset the view index to the identity of the new list before asking the
+	// evaluator for filter values. Evaluators work with view positions and may
+	// call ItemAt; after Delete the old index can point past the shortened
+	// list, which used to panic in Item().
+	ls.index = make([]int, 0, len(ls.list))
+	for i := range ls.list {
+		ls.index = append(ls.index, i)
+	}
+
 	index := make([]int, 0, len(ls.list))
 	for i := range ls.list {
 		keepItem := ls.filters.Len() == 0
