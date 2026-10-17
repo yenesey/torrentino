@@ -4,9 +4,10 @@
 
 ## Что это
 
-`torrentino` — Telegram-бот (Go) для управления «домашней» экосистемой загрузок на NAS.
-Даёт поиск раздач, постановку загрузок, просмотр/управление списком загрузок и мгновенный
-просмотр видео через Torrserver.
+`torrentino` — Go-приложение для управления «домашней» экосистемой загрузок на NAS.
+Основной интерфейс — Telegram-бот; при `web.enabled: true` тот же бинарник поднимает
+веб-интерфейс в браузере. Оба интерфейса дают поиск раздач, постановку загрузок,
+просмотр/управление списком загрузок и мгновенный просмотр видео через Torrserver.
 
 Внешние интеграции:
 - **Jackett** — метапоисковик торрентов (API v2.0), используется как поисковый движок.
@@ -14,15 +15,19 @@
 - **Torrserver** — стриминг видео без полной загрузки (add/list/rem).
 
 Репозиторий: `github.com/yenesey/torrentino`. Модуль: `torrentino`. Go 1.24 (`toolchain go1.24.0`).
-Объём — ~2000 строк Go. Тесты точечные: `common/settings_test.go`,
-`common/paginator/paginator_test.go` и `api/torrserver/torrserver_test.go`.
+Объём — несколько тысяч строк Go (Telegram-часть, общий слой `core`/`common/list`,
+веб-интерфейс `web`).
+
+Тесты: `common/settings_test.go`, `common/list/list_test.go`, `common/password/password_test.go`,
+`common/paginator/paginator_test.go`, `core/core_test.go`, `api/torrserver/torrserver_test.go`,
+`web/*_test.go` (включая интеграционные через `httptest`).
 
 ## Сборка и запуск
 
 ```bash
 go build ./...          # сборка (проверено: OK)
 go vet ./...            # статический анализ (проверено: чисто)
-go test -race ./...     # тесты (проходят)
+go test -race ./...     # тесты (проходят; web-тесты медленные из-за PBKDF2)
 go build -v -ldflags "-s -w"   # релизная сборка (как в update-service.sh)
 ```
 
@@ -35,42 +40,78 @@ go build -v -ldflags "-s -w"   # релизная сборка (как в update
 ./torrentino
 ```
 
+Для веб-аккаунтов хеш пароля генерируется флагом (пароль читается из stdin, `settings.json`
+при этом не нужен):
+
+```bash
+read -rs PASSWORD && printf %s "$PASSWORD" | ./torrentino -hash-password
+```
+
 Если конфига нет или он невалиден, бот не стартует: печатает диагностику и выходит
 с кодом 1 (см. п. 1 подводных камней).
 
-Линтер-конфигов в проекте нет. Тестов немного: загрузка/валидация конфига, разбор
-callback-данных пагинатора и сборка запросов к Torrserver; остальное проверяется вручную
-в Telegram.
+Линтер-конфигов в проекте нет. Тесты покрывают конфиг (включая блок `web`), `common/list`,
+пароли, разбор callback-данных и web-команд, домен `core` (с фейками) и web-интерфейс
+(интеграционные через `httptest`). Telegram-сценарий по-прежнему проверяется вручную.
 
 ## Структура
 
 ```
-main.go                     точка входа: создание бота, ACL-middleware, роутинг команд
+main.go                     точка входа: -hash-password, web (до бота), бот, SIGTERM/shutdown
 settings.json               конфиг (в .gitignore, в репозиторий не коммитится)
 common/
-  settings.go               LoadSettings/MustLoadSettings: чтение, валидация, common.Settings
+  settings.go               LoadSettings/MustLoadSettings: чтение, валидация, common.Settings (в т.ч. web)
   settings_test.go          тесты загрузки и валидации конфига (через LoadSettingsFrom)
+  basepath.go               NormalizeBasePath для web.base-path
+  password/password.go      PBKDF2-HMAC-SHA256 хеши/проверка, формат для settings.json
+  password/password_test.go тесты формата, соли и проверки пароля
   utils/utils.go            FormatFileSize, ReadDir (канал), WithTimeout, LogError
   ordmap/ordmap.go          generic-ordered map с iter.Seq2 (итераторы Go 1.23+)
-  paginator/paginator.go    ядро UI: сообщение + inline-клавиатура, пагинация, сортировка, фильтры, действия
+  list/list.go              UI-агностичный List: индексы, Evaluator, Sorting, фильтры, очередь
+  list/view.go              list.View: страница, выбор, Prepare, Select, Toggle*, ExecuteSelected
+  list/list_test.go         тесты границ, сортировок, фильтров и ExecuteSelected
+  paginator/paginator.go    Telegram-рендерер: сообщение + inline-клавиатура, dispatch
   paginator/paginator_test.go тесты разбора callback-данных (через dispatch, без бота)
-  paginator/list.go         List: срез индексов, Evaluator, Sorting, очередь мультисортировки
+  paginator/list.go         алиасы List/Sorting/Evaluator на common/list
+core/
+  actions.go                Action, sentinel-ошибки, ActionIDs
+  services.go               Service и интерфейсы JackettAPI/TransmissionAPI/TorrserverAPI + адаптеры
+  search.go                 FindItem, Search/ResolveHash/FindActions/DoFind/TorrentFile/Poster
+  downloads.go              DownloadItem, Downloads (Transmission + диск), сортировки, действия, пути
+  torrserver.go             TorrserverItem, список/сортировка/delete
+  screens.go                общие дескрипторы сортировок и фильтров экранов
+  core_test.go              юнит-тесты домена с фейками
+web/
+  server.go, middleware.go  HTTP-сервер, маршруты, base-path, логи, заголовки, auth/CSRF middleware
+  auth.go, sessions.go      логин/логаут, PBKDF2, серверные сессии, cookie, rate limit
+  csrf.go, limiter.go       CSRF/Origin, лимит попыток логина
+  screens.go, commands.go   состояние экрана на сессию, парсер web-команд, действия
+  screen_find.go, screen_downloads.go, screen_torrserver.go, torrent.go, view.go, render.go
+  downloads_cache.go        снимок /downloads с TTL 2 с
+  templates/, static/       встроенные html/template, CSS, app.js, htmx.min.js
 api/
   jackett/jackett.go        поиск, парсинг .torrent для InfoHash, cookiejar
   transmission/transmission.go  тонкие обёртки над transmissionrpc/v2 (клиент через sync.Once)
   torrserver/torrserver.go  JSON-over-HTTP POST /torrents, помощник post()
   torrserver/torrserver_test.go тесты экранирования, инъекции и разбора ответа
 handlers/
-  search/search.go          поиск: поиск + действия download/torrsrv/.torrent/web page
-  downloads/downloads.go    список загрузок + файлы на диске, автообновление раз в 5 с
-  torrserver/torrserver.go  список раздач Torrserver, действие delete
+  search/search.go          Telegram-рендер поиска; домен — core.Service
+  downloads/downloads.go    Telegram-рендер списка загрузок, автообновление раз в 5 с
+  torrserver/torrserver.go  Telegram-рендер Torrserver
 torrentino.service          systemd-юнит (WorkingDirectory=/opt/torrentino)
 update-service.sh           сборка → stop → mv в /opt/torrentino → start (нужен root)
 ```
 
 ## Архитектура
 
-**Паттерн экрана.** Каждый экран — структура, встраивающая `paginator.Paginator`, и
+**Общий слой.** `common/list` — UI-агностичное состояние списка (`List`, `View`,
+`Sorting`, `Evaluator`, `Select`/`NextPage`/`ToggleSorting`/`ToggleFilter`/`ExecuteSelected`).
+`core` — домен: элементы (`FindItem`, `DownloadItem`, `TorrserverItem`), `Service`,
+`AvailableActions`, `Do*`, `TorrentFile`, обход диска и дескрипторы сортировок/фильтров
+(`FindSorting`, `DownloadsFilters`, …). Telegram-хендлеры и web рендерят одно и то же
+состояние и не дублируют правила. `web` не импортирует `handlers` и `api/*` напрямую.
+
+**Паттерн экрана.** Каждый Telegram-экран — структура, встраивающая `paginator.Paginator`, и
 переопределяющая методы через интерфейсы:
 - `Builder`: `Header` / `Footer` / `Line(i)` — текст;
 - `Actor`: `Actions(i) []string` / `Execute(i, action) bool` — кнопки и их обработка;
@@ -90,26 +131,36 @@ update-service.sh           сборка → stop → mv в /opt/torrentino → 
 только если текст или клавиатура реально изменились (`EditMessageText` /
 `EditMessageReplyMarkup`), чтобы не упираться в лимиты Telegram.
 
-**Доступ.** Middleware в `main.go` пропускает только `From.ID` из `users-list`; чужие
-сообщения просто логируются. Первый запуск с пустым `users-list` — способ узнать свой ID
-из логов.
+**Доступ.** Telegram: middleware в `main.go` пропускает только `From.ID` из `users-list`;
+чужие сообщения просто логируются. Первый запуск с пустым `users-list` — способ узнать
+свой ID из логов. Web: собственные аккаунты `web.users` с PBKDF2-хешами, серверные сессии
+в памяти, CSRF + проверка `Origin`, rate limit на логин; `users-list` для web не
+используется, поэтому вход работает при недоступном Telegram.
+
+**Web.** `web.Server` поднимается из `main()` до Telegram, если `web.enabled`. При
+`base-path: "/"` URL без префикса; при `/torrentino` все ссылки, формы, редиректы, статика
+и cookie получают префикс. SSR: `html/template` + встроенные `web/static/{app.css,app.js,
+htmx.min.js}`. Все действия — POST с CSRF; GET ничего не меняет. Состояние экранов живёт
+в сессии (по одному `find`/`downloads`/`torrserver`), выбор хранится по стабильному ключу
+(`id:`, `path:`, `hash:`), а `/downloads` опрашивается раз в 5 с (пауза при скрытой
+вкладке, серверный кэш снимка 2 с).
 
 ## Соглашения
 
 - Отступы — табы (`.editorconfig`, `indent_size = 4`).
-- Один экран — один пакет в `handlers/`, внешний сервис — один пакет в `api/`.
-- Общие вещи — только в `common/`.
+- Один Telegram-экран — один пакет в `handlers/`, внешний сервис — один пакет в `api/`.
+- Общие вещи — в `common/` или `core/`; UI-агностичное состояние списка — в `common/list`.
 - Ошибки оборачиваются `github.com/pkg/errors` и логируются через `utils.LogError`
   (печатает файл, строку и имя функции). Исключение — `common/settings.go`: там
   используется stdlib `errors` / `fmt.Errorf` с `%w`, а конфигурационные ошибки
   фатальны и намеренно не проходят через `utils.LogError`.
-- Весь внешний ввод оборачивается в `utils.WithTimeout` — таймауты 3–60 с. Таймаут
-  поиска Jackett (60 с по умолчанию) берётся из `common.Settings.JackettTimeout()` —
-  это `jackett.timeout` в конфиге, строка-длительность (`"60s"`); пустое значение даёт
-  60 с, неразборчивое ловится валидацией при загрузке. Для HTTP в
-  `api/torrserver` вместо этого используется контекст с дедлайном
-  (`http.NewRequestWithContext`): `utils.WithTimeout` перестаёт ждать, но не отменяет
-  сам запрос, оставляя висеть горутину и соединение.
+- Внешние вызовы ограничены таймаутами и контекстом: Jackett/Transmission/Torrserver
+  принимают `context.Context` (`*Context`-варианты), `.torrent` — 30 с/25 МБ, постер —
+  10 с/2 МБ, действия web — 20 с. Таймаут поиска Jackett (60 с по умолчанию) берётся из
+  `common.Settings.JackettTimeout()` — это `jackett.timeout` в конфиге, строка-длительность
+  (`"60s"`); пустое значение даёт 60 с, неразборчивое ловится валидацией при загрузке.
+  `utils.WithTimeout` остаётся в `common/utils`, но новый код должен использовать контекст,
+  чтобы отмена реально прерывала запрос, а не оставляла висеть горутину.
 - Тела запросов к внешним сервисам собираются через `json.Marshal` по структуре
   (`addRequest` / `listRequest` / `remRequest`), а не конкатенацией строк: в поля
   попадают недоверенные данные — названия раздач с трекеров и постеры, выскребенные
@@ -120,6 +171,9 @@ update-service.sh           сборка → stop → mv в /opt/torrentino → 
 - UI-текст — HTML (`ParseModeHTML`), с emoji-индикаторами: 📥 в Transmission,
   🎦 в Torrserver, 🧲 magnet, 📎 .torrent, 🎬/🎧 по расширению.
 - Комментарии в коде — смесь английского и русского.
+- Правила импортов: `web` → `core`, `common`, stdlib (не `handlers`/`api/*`/Telegram);
+  `handlers` → `core`, `common/paginator`, `common`; `core` → `api/*`, `common`,
+  `common/list`; `common/list` → stdlib, `common/ordmap`, `common/utils`; `api/*` → `common`.
 
 ## Подводные камни
 
@@ -147,8 +201,9 @@ update-service.sh           сборка → stop → mv в /opt/torrentino → 
    прогоном через реальный парсер (объект `path` с `default`/`movie`/`series`; раньше там
    фигурировал `download_dir`, который ни на что не влиял). Обязательные поля теперь
    ловятся валидацией, но опечатка в `path.*` даёт только предупреждение в лог.
-   `jackett.timeout` — единственное поле-длительность: это строка вида `"60s"`, число
-   без единицы (`60`) считается ошибкой, чтобы «60» не читалось как 60 наносекунд.
+   `jackett.timeout` и `web.session.idle-timeout`/`max-age` — строки-длительности
+   (`"60s"`, `"12h"`); число без единицы (`60`) считается ошибкой, чтобы «60» не
+   читалось как 60 наносекунд.
 4. **Глобальное состояние.** `common.Settings`, реестр `paginator.Handlers` и
    `downloads.Updater` — пакетные/глобальные. Один живой экран на префикс **на процесс**,
    поэтому одновременные пользователи в разных чатах перетирают друг другу одно и то же
@@ -188,6 +243,9 @@ update-service.sh           сборка → stop → mv в /opt/torrentino → 
    `httPost` удалена. На это есть тесты в `api/torrserver/torrserver_test.go`.
    Отдельно: поле `data` в ответе — «произвольные данные», поэтому его разбор
    в `DataStruct` сделан необязательным и не роняет весь список.
+   `api/torrserver`, `api/jackett` и `api/transmission` теперь принимают контекст
+   (`*Context`-варианты); старые обёртки оставлены для совместимости. Скрейпинг постера
+   и `.torrent` вынесены в `core` с таймаутами и лимитами.
 10. **Только Unix:** `syscall.Statfs` в футере `/downloads` делает сборку под Windows
     невозможной без правок.
 11. **`utils.LogError`** предполагает путь пакета с префиксом (`parts[0][11:]`) — вызов
@@ -197,7 +255,24 @@ update-service.sh           сборка → stop → mv в /opt/torrentino → 
     сейчас URL достроен до абсолютного. Мораль та же, что с `httPost`: неиспользуемые
     функции `go vet` не помечает, поэтому их надо искать глазами или через staticcheck
     (U1000).
-13. **Callback-запросы обходят ACL (не исправлено).** Middleware доступа в `main.go`
+13. **Web-сессии и состояние.** Сессии только в памяти: рестарт процесса = разлогин,
+    экраны пропадают. Один экран каждого типа на сессию (вкладки одного типа делят
+    состояние). Несколько web-аккаунтов равноправны; ролей/read-only в v1 нет.
+14. **Web `base-path` и TLS.** `web.base-path` должен быть `/` или путём без `//`, `..`,
+    query/fragment; при fallback все URL и cookie идут с префиксом. За TLS-прокси нужны
+    `secure-cookies: true` и `trusted-proxies`, иначе `Origin`/`X-Forwarded-Proto`
+    проверки и `Secure` cookie работают неправильно. Приложение по умолчанию слушает
+    loopback; менять на `0.0.0.0` без TLS — только отладочный режим.
+15. **Web-удаление необратимо** (паритет с Telegram): POST + CSRF + проверка `Origin`,
+    выбор по стабильному ключу, для файлов на диске — проверка `Clean` внутри
+    `path.default/movie/series`. Отдельного подтверждения нет; аудит пишется в лог.
+16. **Web-кэш `/downloads`** — снимок с TTL 2 с, чтобы несколько вкладок не дёргали
+    Transmission и диск на каждый опрос. После действия кэш инвалидируется; ошибка
+    upstream сохраняет старый список и показывает баннер.
+17. **`-hash-password`** читает пароль из stdin и не загружает `settings.json`; не путать
+    с `telegram-api-token`. Пароли хранятся только хешами PBKDF2 (100k–2M итераций,
+    по умолчанию 600k).
+18. **Callback-запросы обходят ACL (не исправлено).** Middleware доступа в `main.go`
     проверяет `users-list` только внутри `if update.Message != nil`, а у нажатия на
     кнопку `update.Message == nil`, поэтому проверка пропускается и
     `Paginator.callbackHandler` выполняется для любого нажатия. Получить клавиатуру
@@ -214,3 +289,17 @@ update-service.sh           сборка → stop → mv в /opt/torrentino → 
 `torrentino.service` ожидает бинарник в `/opt/torrentino`, логи пишутся в
 `/var/log/torrentino.log`, `Restart=always`. Обновление — `sudo ./update-service.sh`
 (собирает с `-ldflags "-s -w"`, останавливает сервис, подменяет бинарник, запускает).
+
+Веб-деплой: `https://torrentino.example.com/`, nginx на 443,
+приложение на `127.0.0.1:8088` (`web.base-path: "/"`, `secure-cookies: true`,
+`trusted-proxies: ["127.0.0.1/32"]`). Сайт nginx —
+`/etc/nginx/sites-available/torrentino` (шаблон в `deploy/nginx/torrentino.conf`),
+сертификат — `/etc/letsencrypt/live/torrentino.example.com/` через
+`certbot --webroot -w /var/www/certbot`; старый путь `/torrentino` на базовом домене
+редиректится на поддомен. Проверки: `nginx -t`, `certbot renew --dry-run`,
+`curl https://torrentino.example.com/healthz`.
+
+`main.go` оборачивает стандартный `log` redacting-writer'ом: библиотека Telegram
+пишет URL с токеном бота при сетевых ошибках, и токен не должен попадать в
+`/var/log/torrentino.log`. Если старые логи содержали токен, его нужно отозвать
+через BotFather и заменить в `settings.json`.

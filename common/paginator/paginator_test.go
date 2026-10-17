@@ -3,6 +3,8 @@ package paginator
 import (
 	"fmt"
 	"testing"
+
+	"torrentino/common/list"
 )
 
 type testItem struct {
@@ -54,10 +56,12 @@ func makeItems(n int) []testItem {
 func newTestScreen(t *testing.T, items ...testItem) (*Paginator, *fakeScreen) {
 	t.Helper()
 
-	p := &Paginator{itemsPerPage: 4, selectedItem: -1, prefix: "test"}
+	p := &Paginator{prefix: "test"}
+	p.View = list.NewView(4)
 	f := &fakeScreen{p: p}
 	p.Builder = f
 	p.Actor = f
+	p.View.Actor = f
 	p.List.Evaluator = f
 
 	p.SetupSorting([]Sorting{{Attribute: "Group", Alias: "group", Order: 0}})
@@ -94,11 +98,11 @@ func TestDispatchSurvivesMalformedCommands(t *testing.T) {
 		p.dispatch(cmd) // must not panic
 	}
 
-	if p.selectedItem != -1 {
-		t.Errorf("selectedItem = %d, want -1: malformed commands must not select an item", p.selectedItem)
+	if p.Selected != -1 {
+		t.Errorf("selectedItem = %d, want -1: malformed commands must not select an item", p.Selected)
 	}
-	if p.activePage != 0 {
-		t.Errorf("activePage = %d, want 0", p.activePage)
+	if p.Page != 0 {
+		t.Errorf("activePage = %d, want 0", p.Page)
 	}
 	if len(f.executed) != 0 {
 		t.Errorf("Execute was called for malformed commands: %v", f.executed)
@@ -109,16 +113,16 @@ func TestDispatchSelectsItem(t *testing.T) {
 	p, _ := newTestScreen(t, makeItems(8)...)
 
 	p.dispatch("3")
-	if p.selectedItem != 3 {
-		t.Fatalf("selectedItem = %d, want 3", p.selectedItem)
+	if p.Selected != 3 {
+		t.Fatalf("selectedItem = %d, want 3", p.Selected)
 	}
 
 	// Values that are not an in-range index must leave the selection alone.
 	for _, cmd := range []string{"8", "100", "12abc", "-1", "+1", ""} {
-		p.selectedItem = 3
+		p.Selected = 3
 		p.dispatch(cmd)
-		if p.selectedItem != 3 {
-			t.Errorf("command %q changed the selection to %d", cmd, p.selectedItem)
+		if p.Selected != 3 {
+			t.Errorf("command %q changed the selection to %d", cmd, p.Selected)
 		}
 	}
 }
@@ -128,19 +132,19 @@ func TestDispatchActionRequiresValidSelection(t *testing.T) {
 
 	// A selection left over from a longer list (or a forged callback) must not
 	// reach the handler, which indexes into the item list.
-	p.selectedItem = 999
+	p.Selected = 999
 	p.dispatch(CB_ACTION + "delete")
 	if len(f.executed) != 0 {
 		t.Fatalf("Execute was called with a stale selection: %v", f.executed)
 	}
 
-	p.selectedItem = 1
+	p.Selected = 1
 	p.dispatch(CB_ACTION + "delete")
 	if len(f.executed) != 1 || f.lastIndex != 1 {
 		t.Fatalf("executed = %v at index %d, want [delete] at 1", f.executed, f.lastIndex)
 	}
-	if p.selectedItem != -1 {
-		t.Errorf("selectedItem = %d, want it cleared after the action", p.selectedItem)
+	if p.Selected != -1 {
+		t.Errorf("selectedItem = %d, want it cleared after the action", p.Selected)
 	}
 }
 
@@ -150,21 +154,21 @@ func TestDispatchNextPageStopsAtLastPage(t *testing.T) {
 	p, _ := newTestScreen(t, makeItems(8)...) // pages 0 and 1 only
 
 	p.dispatch(CB_NEXT_PAGE)
-	if p.activePage != 1 {
-		t.Fatalf("activePage = %d, want 1", p.activePage)
+	if p.Page != 1 {
+		t.Fatalf("activePage = %d, want 1", p.Page)
 	}
 
 	p.dispatch(CB_NEXT_PAGE)
-	if p.activePage != 1 {
-		t.Errorf("activePage = %d, want it to stay on the last page", p.activePage)
+	if p.Page != 1 {
+		t.Errorf("activePage = %d, want it to stay on the last page", p.Page)
 	}
-	if p.activePage < p.lastPage() {
-		t.Errorf("the next button would still be offered on page %d", p.activePage)
+	if p.Page < p.lastPage() {
+		t.Errorf("the next button would still be offered on page %d", p.Page)
 	}
 
 	p.dispatch(CB_PREV_PAGE)
-	if p.activePage != 0 {
-		t.Errorf("activePage = %d, want 0", p.activePage)
+	if p.Page != 0 {
+		t.Errorf("activePage = %d, want 0", p.Page)
 	}
 }
 
@@ -186,22 +190,29 @@ func TestDispatchFilterValueWithSlash(t *testing.T) {
 
 	p.dispatch(CB_FILTER_BY + "Group/sub/g")
 
-	buttons, ok := p.filters.Get("Group")
-	if !ok {
-		t.Fatal("filter attribute is missing")
+	found := false
+	for _, value := range p.FilterValues("Group") {
+		if value.Value == "sub/g" {
+			found = true
+			if !value.Enabled {
+				t.Errorf("filter %q is not enabled, want it toggled as one value", "sub/g")
+			}
+		}
 	}
-	if enabled, ok := buttons.Get("sub/g"); !ok || !enabled {
-		t.Errorf("filter %q: enabled=%v found=%v, want it toggled as one value", "sub/g", enabled, ok)
+	if !found {
+		t.Errorf("filter value %q is missing", "sub/g")
 	}
 }
 
 // /torrserver never calls SetupFiltering or SetupSorting, so those ordered maps
 // stay nil; a callback for them must be ignored instead of dereferencing nil.
 func TestDispatchWithoutFilterAndSortingSetup(t *testing.T) {
-	p := &Paginator{itemsPerPage: 4, selectedItem: -1, prefix: "torrserver"}
+	p := &Paginator{prefix: "torrserver"}
+	p.View = list.NewView(4)
 	f := &fakeScreen{p: p}
 	p.Builder = f
 	p.Actor = f
+	p.View.Actor = f
 	p.List.Evaluator = f
 
 	p.dispatch(CB_FILTER_BY + "Status/seeding")

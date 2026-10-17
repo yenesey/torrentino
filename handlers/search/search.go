@@ -1,50 +1,39 @@
 package search
 
 import (
+	"bytes"
 	"context"
-	"net/http"
 	"strconv"
 
-	"github.com/antchfx/htmlquery"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"golang.org/x/net/html"
 
-	"torrentino/api/jackett"
-	"torrentino/api/torrserver"
-	"torrentino/api/transmission"
-	"torrentino/common"
 	"torrentino/common/paginator"
 	"torrentino/common/utils"
+	"torrentino/core"
 )
-
-type ListItem struct {
-	jackett.Result
-	InTorrents   bool
-	InTorrserver bool
-}
 
 type FindPaginator struct {
 	paginator.Paginator
-	query              string
-	transmissionHashes map[string]bool
-	torrserverHashes   map[string]bool
+	ctx     context.Context
+	service *core.Service
+	query   string
 }
 
 // ----------------------------------------
 func NewPaginator(ctx context.Context, b *bot.Bot, update *models.Update) *FindPaginator {
 	var p FindPaginator
-	p = FindPaginator{
-		*paginator.New(ctx, b, update, "find", 4, &p, &p, &p),
-		update.Message.Text,
-		make(map[string]bool),
-		make(map[string]bool),
+	p.Paginator = *paginator.New(ctx, b, update, "find", 4, &p, &p, &p)
+	p.ctx = ctx
+	p.service = core.Default
+	if update != nil && update.Message != nil {
+		p.query = update.Message.Text
 	}
 	return &p
 }
 
-func (p *FindPaginator) Item(i int) *ListItem {
-	return p.Paginator.Item(i).(*ListItem)
+func (p *FindPaginator) Item(i int) *core.FindItem {
+	return p.Paginator.Item(i).(*core.FindItem)
 }
 
 // method overload
@@ -91,102 +80,43 @@ func (p *FindPaginator) Stringify(i int, attributeName string) string {
 
 // method overload
 func (p *FindPaginator) Compare(i int, j int, attribute string) bool {
-	a := p.Item(i)
-	b := p.Item(j)
-	switch attribute {
-	case "Size":
-		return a.Size < b.Size
-	case "Seeders":
-		return a.Seeders < b.Seeders
-	case "Peers":
-		return a.Peers < b.Peers
-	case "Link":
-		if a.Link == "" && b.Link != "" {
-			return true
-		}
-		return false
-	}
-	return false
+	return core.FindCompare(p.Item(i), p.Item(j), attribute)
 }
 
 // method overload
 func (p *FindPaginator) Actions(i int) (result []string) {
-
 	item := p.Item(i)
 
 	if item.InfoHash == "" && item.Link != "" {
-		infoHash, err := jackett.GetInfoHash(item.Link)
-		if err != nil {
+		if err := p.service.ResolveHash(p.ctx, item); err != nil {
 			utils.LogError(err)
-		} else {
-			item.InfoHash = infoHash
 		}
 	}
-
-	if p.transmissionHashes[item.InfoHash] {
-		item.InTorrents = true
-	}
-	if p.torrserverHashes[item.InfoHash] {
-		item.InTorrserver = true
-	}
-
-	if !item.InTorrents {
-		result = append(result, "download")
-		result = append(result, "download:series")
-		result = append(result, "download:movie")
-	}
-	if !item.InTorrserver {
-		result = append(result, "torrsrv")
-	}
-	if item.Link != "" {
-		result = append(result, ".torrent")
-	}
-	if item.Details != "" {
-		result = append(result, "web page")
-	}
-	return result
+	return core.ActionIDs(p.service.FindActions(item))
 }
 
 // method overload
 func (p *FindPaginator) Execute(i int, action string) (unselect bool) {
-
 	item := p.Item(i)
 
-	var urlOrMagnet string
-	if item.Link != "" {
-		urlOrMagnet = item.Link
-	} else {
-		urlOrMagnet = item.MagnetUri
-	}
-
-	var err error
 	switch action {
-	case "download":
-		if _, err = transmission.Add(urlOrMagnet, common.Settings.Path.Default); err == nil {
-			item.InTorrents = true
-		}
-	case "download:series":
-		if _, err = transmission.Add(urlOrMagnet, common.Settings.Path.Series); err == nil {
-			item.InTorrents = true
-		}
-	case "download:movie":
-		if _, err = transmission.Add(urlOrMagnet, common.Settings.Path.Movie); err == nil {
-			item.InTorrents = true
-		}
-	case "torrsrv":
-		if err = torrserver.Add(urlOrMagnet, item.Title, getPosterLinkFromPage(item.Details, item.TrackerId)); err == nil {
-			item.InTorrserver = true
-		}
 	case "web page":
 		p.ReplyMessage(item.Details)
-
+		return true
 	case ".torrent":
-		var res *http.Response
-		if res, err = http.Get(item.Link); err == nil {
-			p.ReplyDocument(&models.InputFileUpload{Filename: item.Title + ".torrent", Data: res.Body})
+		data, err := p.service.TorrentFile(p.ctx, item.Link)
+		if err != nil {
+			utils.LogError(err)
+			return false
 		}
+		p.ReplyDocument(&models.InputFileUpload{
+			Filename: core.SafeTorrentName(item.Title) + ".torrent",
+			Data:     bytes.NewReader(data),
+		})
+		return true
 	}
-	if err != nil {
+
+	if err := p.service.DoFind(p.ctx, item, action); err != nil {
 		utils.LogError(err)
 		return false
 	}
@@ -194,103 +124,23 @@ func (p *FindPaginator) Execute(i int, action string) (unselect bool) {
 }
 
 func (p *FindPaginator) Reload() error {
-
-	result, err := jackett.Query(p.query, common.Settings.Jackett.Indexers)
+	items, err := p.service.Search(p.ctx, p.query)
 	if err != nil {
 		utils.LogError(err)
 		return err
 	}
 
-	trList, err := transmission.List()
-	if err != nil {
-		utils.LogError(err)
-	} else {
-		for _, el := range *trList {
-			p.transmissionHashes[*el.HashString] = true
-		}
-	}
-
-	tsList, err := torrserver.List()
-	if err != nil {
-		utils.LogError(err)
-	} else {
-		for _, el := range *tsList {
-			p.torrserverHashes[el.Hash] = true
-		}
-	}
-
-	p.Alloc(len(*result))
-	for i := range *result {
-		hash := (*result)[i].InfoHash
-		p.Append(&ListItem{
-			(*result)[i],
-			p.transmissionHashes[hash],
-			p.torrserverHashes[hash],
-		})
+	p.Alloc(len(items))
+	for _, item := range items {
+		p.Append(item)
 	}
 	return nil
-
-}
-
-// -------------------------------------------------------------------------
-func getPosterLinkFromPage(pageUrl string, tracker string) string {
-
-	var findKey = func(attr []html.Attribute, key string) string {
-		for i := range attr {
-			if attr[i].Key == key {
-				return attr[i].Val
-			}
-		}
-		return ""
-	}
-	// _, err := url.Parse(pageUrl)
-	// if err != nil {
-	// 	utils.LogError(err)
-	// 	return ""
-	// }
-
-	doc, err := htmlquery.LoadURL(pageUrl)
-	if err != nil {
-		utils.LogError(err)
-		return ""
-	}
-
-	switch tracker {
-	case "rutor":
-		poster := htmlquery.Find(doc, "//*[@id=\"details\"]/*/tr[1]/td[2]/img")
-		if len(poster) > 0 {
-			if res := findKey(poster[0].Attr, "src"); res != "" {
-				return res
-			}
-		}
-	case "rutracker":
-		poster := htmlquery.Find(doc, "//var[@class=\"postImg postImgAligned img-right\"]")
-		if len(poster) > 0 {
-			if res := findKey(poster[0].Attr, "title"); res != "" {
-				return res
-			}
-		}
-	case "kinozal":
-		poster := htmlquery.Find(doc, "//*[@id=\"main\"]/div[2]/div[1]/div[2]/ul/li[1]/a/img")
-		if len(poster) > 0 {
-			if res := findKey(poster[0].Attr, "src"); res != "" {
-				return res
-			}
-		}
-	}
-
-	return ""
 }
 
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var p = NewPaginator(ctx, b, update)
-	p.SetupSorting([]paginator.Sorting{
-		{Attribute: "Size", Alias: "size", Order: 1},
-		{Attribute: "Seeders", Alias: "seeds", Order: 1},
-		{Attribute: "Peers", Alias: "peers", Order: 0},
-		{Attribute: "Link", Alias: "file", Order: 0},
-	})
-	p.SetupFiltering([]string{"TrackerId"})
+	p.SetupSorting(core.FindSorting())
+	p.SetupFiltering(core.FindFilters())
 	if err := p.Reload(); err != nil {
 		p.ReplyMessage(err.Error())
 	} else {

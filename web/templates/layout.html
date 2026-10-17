@@ -1,0 +1,29 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{.CSRF}}">
+  <title>Torrentino · {{.Screen.Title}}</title>
+  <link rel="stylesheet" href="{{.Base}}/static/app.css?v={{.StaticVersion}}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{.Base}}/find">Torrentino</a>
+    <nav>
+      {{range .Nav}}<a href="{{.URL}}"{{if .Active}} class="active" aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+    </nav>
+    <div class="userbox">
+      <span class="username">{{.User}}</span>
+      <form method="post" action="{{.Base}}/logout">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button type="submit" class="linklike">Log out</button>
+      </form>
+    </div>
+  </header>
+  {{template "screen" .}}
+  <footer class="pagefoot">build {{.Build}}</footer>
+  <script src="{{.Base}}/static/htmx.min.js?v={{.StaticVersion}}"></script>
+  <script src="{{.Base}}/static/app.js?v={{.StaticVersion}}"></script>
+</body>
+</html>{{end}}

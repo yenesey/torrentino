@@ -1,0 +1,119 @@
+{{define "screen"}}<main class="screen" id="screen" data-kind="{{.Screen.Kind}}" data-poll-url="{{if eq .Screen.Kind "downloads"}}{{.Base}}/downloads?fragment=1&amp;poll=1{{end}}">
+  <div class="screen-head">
+    <h1>{{.Screen.Title}}</h1>
+    <span>
+      {{if .Screen.Updated}}<span class="muted" aria-live="polite">updated {{.Screen.Updated}}</span>{{end}}
+      {{if eq .Screen.Kind "downloads"}}<a class="muted" href="{{.Base}}/downloads">Refresh</a>{{end}}
+      {{if eq .Screen.Kind "torrserver"}}<a class="muted" href="{{.Base}}/torrserver">Refresh</a>{{end}}
+    </span>
+  </div>
+
+  {{if eq .Screen.Kind "find"}}
+  <form class="search-form" method="post" action="{{.Base}}/find/search"
+        hx-post="{{.Base}}/find/search" hx-target="#screen" hx-swap="outerHTML"
+        hx-push-url="{{.Base}}/find" hx-disabled-elt="button">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="search" name="q" value="{{.Screen.Query}}" maxlength="256"
+           placeholder="Search torrents…" aria-label="Search torrents" required autofocus>
+    <button class="primary" type="submit" {{if .Screen.Searching}}disabled{{end}}>{{if .Screen.Searching}}Searching…{{else}}Search{{end}}</button>
+    <span class="htmx-indicator searching" aria-live="polite">Searching…</span>
+  </form>
+  {{end}}
+
+  {{if .Screen.Error}}<p class="banner error" role="alert">{{.Screen.Error}}{{if .Screen.ReloadURL}} <a href="{{.Screen.ReloadURL}}">Reload</a>{{end}}</p>{{end}}
+  {{if .Screen.Success}}<p class="banner success" role="status" aria-live="polite">{{.Screen.Success}}</p>{{end}}
+
+  <form class="commands" method="post" action="{{.Screen.CommandURL}}"
+        hx-post="{{.Screen.CommandURL}}" hx-target="#screen" hx-swap="outerHTML"
+        hx-disabled-elt="button">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+
+    <div class="screen-head">
+      <h2>{{.Screen.Header}}</h2>
+      <button type="submit" name="cmd" value="controls:toggle" class="muted">{{if .Screen.Controls}}▴ controls{{else}}▾ controls{{end}}</button>
+    </div>
+
+    {{if .Screen.Controls}}
+    <div class="controls">
+      {{if .Screen.Sortings}}
+      <h3>Sort</h3>
+      <div class="chips">
+        {{range .Screen.Sortings}}
+        <button type="submit" name="cmd" value="{{.Cmd}}" class="{{if .Active}}enabled{{end}}">{{.Alias}}{{if .Arrow}} <span aria-hidden="true">{{.Arrow}}</span>{{end}}{{if .Active}}<sup>{{.Queue}}</sup>{{end}}</button>
+        {{end}}
+      </div>
+      {{end}}
+      {{range .Screen.Filters}}
+      <h3>Filter: {{.Attribute}}</h3>
+      <div class="chips">
+        {{range .Values}}
+        <button type="submit" name="cmd" value="{{.Cmd}}" class="{{if .Enabled}}enabled{{end}}">{{.Label}}</button>
+        {{end}}
+      </div>
+      {{end}}
+      {{if .Screen.Filters}}<p><button type="submit" name="cmd" value="filter:clear">Clear filters</button></p>{{end}}
+    </div>
+    {{end}}
+
+    {{if .Screen.Empty}}
+    <p class="empty">{{if and (eq .Screen.Kind "find") .Screen.Query}}No results for “{{.Screen.Query}}”. Try another query.{{else}}the list is empty{{end}}</p>
+    {{else}}
+    <ul class="list">
+      {{range .Screen.Rows}}
+      <li class="row{{if .Selected}} selected{{end}}">
+        <button class="select" type="submit" name="cmd" value="select:{{.Index}}" aria-label="Select item {{.Number}}">
+          <span class="num">{{.Number}}.</span>
+          {{if eq $.Screen.Kind "find"}}
+            <span class="title">{{.Title}}</span>
+            <span class="meta">[{{.Size}}] [{{.Tracker}}] [{{.Seeds}}s/{{.Peers}}p]</span>
+            <span class="markers">
+              {{if .HasLink}}<span title=".torrent file available" aria-label=".torrent file available">📎</span>{{end}}
+              {{if .HasMagnet}}<span title="magnet link" aria-label="magnet link">🧲</span>{{end}}
+              {{if .InTorrents}}<span title="in Transmission" aria-label="in Transmission">📥</span>{{end}}
+              {{if .InTorrserver}}<span title="in Torrserver" aria-label="in Torrserver">🎦</span>{{end}}
+            </span>
+          {{else if eq $.Screen.Kind "downloads"}}
+            {{if .IsDir}}<span class="badge">📁 {{.ExtCount}}x {{.Ext}}</span>{{else}}<span aria-hidden="true">{{.Icon}}</span>{{end}}
+            <span class="title">{{.Name}}</span>
+            <span class="meta">[{{.Size}}] [{{.Percent}}] [{{.Ratio}}]</span>
+            {{if .OnDisk}}<span class="badge on-disk">on disk</span>{{else}}<span class="badge status-{{.Status}}">{{.Status}}</span>{{end}}
+          {{else}}
+            <span class="title">{{.Title}}</span>
+            <span class="meta">[{{.TorrentSize}}]</span>
+          {{end}}
+        </button>
+      </li>
+      {{end}}
+    </ul>
+    {{end}}
+
+    <div class="pager">
+      <button type="submit" name="cmd" value="page:prev" {{if not .Screen.HasPrev}}disabled{{end}}>◀ Prev</button>
+      <span class="muted">page {{inc .Screen.Page}} of {{inc .Screen.LastPage}}</span>
+      <button type="submit" name="cmd" value="page:next" {{if not .Screen.HasNext}}disabled{{end}}>Next ▶</button>
+    </div>
+
+    {{if .Screen.SelectedRow}}
+    <div class="actions">
+      <h3>selected #{{.Screen.SelectedNumber}}:
+        {{if eq .Screen.Kind "find"}}{{.Screen.SelectedRow.Title}}{{else if eq .Screen.Kind "downloads"}}{{.Screen.SelectedRow.Name}}{{else}}{{.Screen.SelectedRow.Title}}{{end}}
+      </h3>
+      <div class="buttons">
+        {{$root := .}}
+        {{range .Screen.Actions}}
+          {{if eq .ID ".torrent"}}
+            <a class="linklike" href="{{$root.Screen.SelectedRow.TorrentURL}}">.torrent</a>
+          {{else if eq .ID "web page"}}
+            {{if $root.Screen.SelectedRow.DetailsURL}}<a class="linklike" href="{{$root.Screen.SelectedRow.DetailsURL}}" target="_blank" rel="noopener noreferrer">web page</a>{{end}}
+          {{else}}
+            <button type="submit" name="cmd" value="{{.Cmd}}" class="{{if .Danger}}danger{{end}}"{{if .Title}} title="{{.Title}}"{{end}}>{{.Label}}</button>
+          {{end}}
+        {{end}}
+        <button type="submit" name="cmd" value="deselect">deselect</button>
+      </div>
+    </div>
+    {{end}}
+
+    {{if .Screen.Footer}}<div class="footer-note"><span>{{.Screen.Footer}}</span></div>{{end}}
+  </form>
+</main>{{end}}

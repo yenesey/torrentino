@@ -1,4 +1,4 @@
-# Yet another telegram bot to manage my NAS download ecosystem
+# Yet another telegram bot (with an optional web UI) to manage my NAS download ecosystem
 
 Integrates with:
 - [Transmission](https://github.com/transmission/transmission) - for downloads
@@ -58,6 +58,74 @@ Where:
 Required fields are `telegram-api-token`, `jackett.api-key` and `host`/`port` of all
 three services: if any of them is missing or invalid, the bot prints the list of
 problems and exits instead of starting with broken endpoints.
+
+### Web interface (optional)
+
+The same binary can serve a browser UI in addition to Telegram. It is disabled by
+default: without a `web` block the bot behaves exactly as before. Enable it in
+`settings.json`:
+
+```json
+"web": {
+    "enabled": true,
+    "listen": "127.0.0.1:8088",
+    "base-path": "/",
+    "page-size": 20,
+    "session": {
+        "idle-timeout": "12h",
+        "max-age": "168h"
+    },
+    "secure-cookies": true,
+    "trusted-proxies": ["127.0.0.1/32"],
+    "users": [
+        { "name": "denis", "password-hash": "pbkdf2-sha256$600000$<base64-salt>$<base64-key>" }
+    ]
+}
+```
+
+The web UI needs its own accounts; Telegram `users-list` is not reused, so login
+works even when Telegram is unavailable. Generate a hash for every account with:
+
+```bash
+read -rs PASSWORD && printf %s "$PASSWORD" | ./torrentino -hash-password
+```
+
+The flag reads the password from stdin (not argv), does not load `settings.json`,
+prints one line for `web.users[].password-hash` and exits. Passwords are stored only
+as PBKDF2-HMAC-SHA256 hashes.
+
+Fields:
+
+- `web.listen` - listen address, default `127.0.0.1:8088`. In the recommended
+  deployment it stays on loopback and nginx terminates TLS.
+- `web.base-path` - external URL prefix. `"/"` for the subdomain deployment
+  (`https://torrentino.example.com/`); `/torrentino` remains supported as a fallback
+  for serving under a path.
+- `web.page-size` - items per page, 5–100, default 20.
+- `web.session.idle-timeout` / `max-age` - Go durations; sessions are in memory, so
+  a restart logs everyone out.
+- `web.secure-cookies` - set `true` when TLS is terminated by nginx.
+- `web.trusted-proxies` - CIDRs whose `X-Forwarded-For` / `X-Forwarded-Proto`
+  headers are trusted.
+- `web.tls.cert` / `web.tls.key` - optional built-in TLS; set both or neither.
+- `web.users` - one or more equal accounts. At least one is required when web is
+  enabled.
+
+Screens are `Find`, `Downloads` and `Torrserver` and mirror the bot: the same
+sorting/filtering/pagination, the same actions, immediate deletion as in Telegram,
+and a 5-second auto-refresh for downloads that pauses in a hidden tab. State is kept
+server-side per session (one screen of each kind per session); there is no database.
+
+The UI is reachable at `base-path` after login; `/healthz` is public and returns
+`{"status":"ok"}`. When web is enabled and the Telegram bot cannot start, the process
+logs the error and keeps serving the web UI.
+
+This deployment runs at **https://torrentino.example.com/** with nginx on
+443, the app on `127.0.0.1:8088` and `web.base-path: "/"`. The nginx site and the
+certificate/renewal commands are in [`deploy/nginx/`](deploy/nginx/README.md); the
+old `https://example.com/torrentino/` path is redirected to the subdomain.
+See `spec/add-web-interface/08-deployment-and-ops.md` for the full operations guide
+and `spec/add-web-interface/06-auth-and-security.md` for the security model.
 
 ### Run
  - append your telegram user id to "users-list" and start bot

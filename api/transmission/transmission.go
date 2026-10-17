@@ -34,52 +34,74 @@ func client() (*transmissionrpc.Client, error) {
 	return rpcClient, rpcClientErr
 }
 
-func Add(torrentUrlOrMagnet string, downloadDir string) (torrent transmissionrpc.Torrent, err error) {
+// The context is passed through to transmissionrpc, so an HTTP request that
+// the browser abandoned also stops waiting for the RPC call.
+func AddContext(ctx context.Context, torrentUrlOrMagnet string, downloadDir string) (torrent transmissionrpc.Torrent, err error) {
 	c, err := client()
 	if err != nil {
 		return torrent, err
 	}
-	return c.TorrentAdd(context.TODO(), transmissionrpc.TorrentAddPayload{
+	return c.TorrentAdd(ctx, transmissionrpc.TorrentAddPayload{
 		Filename:    &torrentUrlOrMagnet,
 		DownloadDir: &downloadDir,
 	})
 }
 
-func Delete(torrentId int64) (err error) {
+func Add(torrentUrlOrMagnet string, downloadDir string) (transmissionrpc.Torrent, error) {
+	return AddContext(context.Background(), torrentUrlOrMagnet, downloadDir)
+}
+
+func DeleteContext(ctx context.Context, torrentId int64) (err error) {
 	c, err := client()
 	if err != nil {
 		return err
 	}
-	return c.TorrentRemove(context.TODO(), transmissionrpc.TorrentRemovePayload{
+	return c.TorrentRemove(ctx, transmissionrpc.TorrentRemovePayload{
 		IDs:             []int64{torrentId},
 		DeleteLocalData: true,
 	})
 }
 
-func Start(torrentId int64) (err error) {
+func Delete(torrentId int64) error {
+	return DeleteContext(context.Background(), torrentId)
+}
+
+func StartContext(ctx context.Context, torrentId int64) (err error) {
 	c, err := client()
 	if err != nil {
 		return err
 	}
-	return c.TorrentStartIDs(context.TODO(), []int64{torrentId})
+	return c.TorrentStartIDs(ctx, []int64{torrentId})
 }
 
-func Pause(torrentId int64) (err error) {
+func Start(torrentId int64) error {
+	return StartContext(context.Background(), torrentId)
+}
+
+func PauseContext(ctx context.Context, torrentId int64) (err error) {
 	c, err := client()
 	if err != nil {
 		return err
 	}
-	return c.TorrentStopIDs(context.TODO(), []int64{torrentId})
+	return c.TorrentStopIDs(ctx, []int64{torrentId})
 }
 
-func List() (*[]transmissionrpc.Torrent, error) {
+func Pause(torrentId int64) error {
+	return PauseContext(context.Background(), torrentId)
+}
+
+func ListContext(ctx context.Context) (*[]transmissionrpc.Torrent, error) {
 	c, err := client()
 	if err != nil {
 		return nil, err
 	}
-	t, err := c.TorrentGetAll(context.TODO())
+	t, err := c.TorrentGetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &t, nil
+}
+
+func List() (*[]transmissionrpc.Torrent, error) {
+	return ListContext(context.Background())
 }

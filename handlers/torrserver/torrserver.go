@@ -6,26 +6,28 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 
-	"torrentino/api/torrserver"
 	"torrentino/common/paginator"
 	"torrentino/common/utils"
+	"torrentino/core"
 )
 
 type TorrserverPaginator struct {
 	paginator.Paginator
+	ctx     context.Context
+	service *core.Service
 }
 
 // ----------------------------------------
 func NewPaginator(ctx context.Context, b *bot.Bot, update *models.Update) *TorrserverPaginator {
 	var p TorrserverPaginator
-	p = TorrserverPaginator{
-		*paginator.New(ctx, b, update, "torrserver", 4, &p, &p, &p),
-	}
+	p.Paginator = *paginator.New(ctx, b, update, "torrserver", 4, &p, &p, &p)
+	p.ctx = ctx
+	p.service = core.Default
 	return &p
 }
 
-func (p *TorrserverPaginator) Item(i int) *torrserver.TSListItem {
-	return p.Paginator.Item(i).(*torrserver.TSListItem)
+func (p *TorrserverPaginator) Item(i int) *core.TorrserverItem {
+	return p.Paginator.Item(i).(*core.TorrserverItem)
 }
 
 // method overload
@@ -37,19 +39,16 @@ func (p *TorrserverPaginator) Line(i int) string {
 
 // method overload
 func (p *TorrserverPaginator) Actions(i int) []string {
-	return []string{"delete"}
+	return core.ActionIDs(p.service.TorrserverActions(p.Item(i)))
 }
 
 // method overload
 func (p *TorrserverPaginator) Execute(i int, action string) (unselect bool) {
-	item := p.Item(i)
-	if action == "delete" {
-		if err := torrserver.Delete(item.Hash); err == nil {
-			p.Delete(i)
-		} else {
-			utils.LogError(err)
-		}
+	if err := p.service.DoTorrserver(p.ctx, p.Item(i), action); err != nil {
+		utils.LogError(err)
+		return true
 	}
+	p.Delete(i)
 	return true
 }
 
@@ -60,26 +59,19 @@ func (p *TorrserverPaginator) Stringify(i int, attribute string) string {
 
 // method overload
 func (p *TorrserverPaginator) Compare(i int, j int, attribute string) bool {
-	a := p.Item(i)
-	b := p.Item(j)
-	switch attribute {
-	case "Size":
-		return a.Torrent_Size < b.Torrent_Size
-	}
-	return false
+	return core.TorrserverCompare(p.Item(i), p.Item(j), attribute)
 }
 
 func (p *TorrserverPaginator) Reload() error {
-
-	result, err := torrserver.List()
+	items, err := p.service.TorrserverList(p.ctx)
 	if err != nil {
 		utils.LogError(err)
 		return err
 	}
 
-	p.Alloc(len(*result))
-	for i := range *result {
-		p.Append(&(*result)[i])
+	p.Alloc(len(items))
+	for _, item := range items {
+		p.Append(item)
 	}
 	return nil
 }
@@ -87,9 +79,7 @@ func (p *TorrserverPaginator) Reload() error {
 // -------------------------------------------------------------------------
 func Handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var p = NewPaginator(ctx, b, update)
-	p.SetupSorting([]paginator.Sorting{
-		{Attribute: "Size", Alias: "size", Order: 1},
-	})
+	p.SetupSorting(core.TorrserverSorting())
 	if err := p.Reload(); err != nil {
 		p.ReplyMessage(err.Error())
 	} else {

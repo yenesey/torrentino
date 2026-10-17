@@ -76,13 +76,13 @@ func endpoint() string {
 // The timeout is applied to the request context, so an expired deadline really
 // cancels the HTTP call instead of merely abandoning a goroutine that keeps it
 // running, and the body is always closed.
-func post(payload any, timeout time.Duration) ([]byte, error) {
+func post(parent context.Context, payload any, timeout time.Duration) ([]byte, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint(), bytes.NewReader(body))
@@ -113,8 +113,8 @@ func post(payload any, timeout time.Duration) ([]byte, error) {
 	return data, nil
 }
 
-func List() (*[]TSListItem, error) {
-	data, err := post(listRequest{Action: "list"}, requestTimeout)
+func ListContext(ctx context.Context) (*[]TSListItem, error) {
+	data, err := post(ctx, listRequest{Action: "list"}, requestTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +134,12 @@ func List() (*[]TSListItem, error) {
 	return &list, nil
 }
 
-func Add(link string, title string, poster string) error {
-	_, err := post(addRequest{
+func List() (*[]TSListItem, error) {
+	return ListContext(context.Background())
+}
+
+func AddContext(ctx context.Context, link string, title string, poster string) error {
+	_, err := post(ctx, addRequest{
 		Action:   "add",
 		Link:     link,
 		Title:    title,
@@ -145,7 +149,15 @@ func Add(link string, title string, poster string) error {
 	return err
 }
 
-func Delete(hash string) error {
-	_, err := post(remRequest{Action: "rem", Hash: hash}, requestTimeout)
+func Add(link string, title string, poster string) error {
+	return AddContext(context.Background(), link, title, poster)
+}
+
+func DeleteContext(ctx context.Context, hash string) error {
+	_, err := post(ctx, remRequest{Action: "rem", Hash: hash}, requestTimeout)
 	return err
+}
+
+func Delete(hash string) error {
+	return DeleteContext(context.Background(), hash)
 }

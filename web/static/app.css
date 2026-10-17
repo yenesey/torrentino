@@ -1,0 +1,105 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --text: #1b1f24;
+  --muted: #5b6572;
+  --line: #d9dee5;
+  --accent: #2f6fed;
+  --accent-soft: #e5edff;
+  --danger: #c62828;
+  --danger-soft: #fdecec;
+  --ok: #1b7f4b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151a;
+    --panel: #1a1f27;
+    --text: #e7eaf0;
+    --muted: #9aa5b4;
+    --line: #2c3440;
+    --accent: #7aa2ff;
+    --accent-soft: #1d2a44;
+    --danger: #ff7b72;
+    --danger-soft: #3a1d1d;
+    --ok: #6bd39b;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+a { color: var(--accent); }
+button, input { font: inherit; }
+button { cursor: pointer; }
+.topbar {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: .6rem 1rem; background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; text-decoration: none; color: var(--text); }
+.topbar nav { display: flex; gap: .25rem; flex-wrap: wrap; }
+.topbar nav a { padding: .45rem .7rem; border-radius: .5rem; text-decoration: none; color: var(--muted); }
+.topbar nav a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.userbox { margin-left: auto; display: flex; align-items: center; gap: .75rem; }
+.username { color: var(--muted); }
+main { max-width: 72rem; margin: 0 auto; padding: 1rem; }
+.screen { background: var(--panel); border: 1px solid var(--line); border-radius: .75rem; padding: 1rem; }
+.screen-head { display: flex; gap: 1rem; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+.screen-head h1 { font-size: 1.15rem; margin: 0; }
+.muted { color: var(--muted); }
+.search-form { display: flex; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap; }
+.search-form input[type=search] { flex: 1 1 16rem; min-width: 0; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); color: var(--text); }
+button.primary { background: var(--accent); color: #fff; border: 0; border-radius: .5rem; padding: .55rem .9rem; min-height: 44px; }
+button.primary:disabled { opacity: .6; cursor: progress; }
+.list { list-style: none; margin: 0; padding: 0; }
+.row { display: flex; gap: .6rem; align-items: baseline; padding: .6rem .35rem; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.row:last-child { border-bottom: 0; }
+.row.selected { background: var(--accent-soft); border-radius: .5rem; }
+.row button.select { background: none; border: 0; color: inherit; text-align: left; padding: 0; min-width: 0; flex: 1 1 auto; display: flex; gap: .45rem; align-items: baseline; flex-wrap: wrap; min-height: 44px; }
+.row .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .title { font-weight: 600; }
+.row .meta { color: var(--muted); font-size: .9rem; white-space: nowrap; }
+.badge { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: .05rem .5rem; font-size: .8rem; color: var(--muted); }
+.badge.status-seeding { color: var(--ok); }
+.badge.status-downloading { color: var(--accent); }
+.badge.on-disk { color: var(--muted); }
+.markers span { margin-left: .2rem; }
+.pager { display: flex; gap: .75rem; align-items: center; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
+.pager button, .panel button, .actions button, .linklike { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: .5rem; padding: .5rem .75rem; min-height: 44px; }
+.pager button:disabled { opacity: .45; cursor: default; }
+.controls { margin: .75rem 0; padding: .75rem; border: 1px dashed var(--line); border-radius: .5rem; }
+.controls h3 { margin: .25rem 0 .5rem; font-size: .95rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.chips button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 999px; padding: .35rem .7rem; min-height: 36px; }
+.chips button.enabled { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.actions { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.actions .buttons { display: flex; gap: .5rem; flex-wrap: wrap; }
+.actions button.danger { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+.banner { border-radius: .5rem; padding: .6rem .8rem; margin: .6rem 0; }
+.banner.error { background: var(--danger-soft); color: var(--danger); }
+.banner.success { background: var(--accent-soft); color: var(--accent); }
+.footer-note { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; display: flex; gap: 1rem; justify-content: space-between; flex-wrap: wrap; }
+.pagefoot { max-width: 72rem; margin: 0 auto; padding: 0 1rem 2rem; color: var(--muted); font-size: .8rem; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.empty { padding: 1.5rem .5rem; text-align: center; color: var(--muted); }
+.searching { color: var(--accent); }
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }
+.empty-actions { margin-top: .75rem; }
+.login-body { display: grid; place-items: center; min-height: 100vh; }
+.login-card { width: min(24rem, 92vw); background: var(--panel); border: 1px solid var(--line); border-radius: .75rem; padding: 1.5rem; }
+.login-card h1 { margin: 0 0 1rem; font-size: 1.4rem; }
+.login-card form { display: grid; gap: .8rem; }
+.login-card label { display: grid; gap: .3rem; color: var(--muted); }
+.login-card input { padding: .6rem .7rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); color: var(--text); }
+.login-card button { background: var(--accent); color: #fff; border: 0; border-radius: .5rem; padding: .65rem; min-height: 44px; }
+@media (max-width: 40rem) {
+  main { padding: .6rem; }
+  .screen { padding: .6rem; }
+  .row .meta { white-space: normal; }
+  .topbar { gap: .5rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
