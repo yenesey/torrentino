@@ -10,7 +10,7 @@
 
   {{if eq .Screen.Kind "find"}}
   <form class="search-form" method="post" action="{{.Base}}/find/search"
-        hx-post="{{.Base}}/find/search" hx-target="#screen" hx-swap="outerHTML"
+        hx-post="{{.Base}}/find/search" hx-target="#screen" hx-swap="outerHTML show:none"
         hx-push-url="{{.Base}}/find" hx-disabled-elt="button">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <input type="search" name="q" value="{{.Screen.Query}}" maxlength="256"
@@ -24,7 +24,7 @@
   {{if .Screen.Success}}<p class="banner success" role="status" aria-live="polite">{{.Screen.Success}}</p>{{end}}
 
   <form class="commands" method="post" action="{{.Screen.CommandURL}}"
-        hx-post="{{.Screen.CommandURL}}" hx-target="#screen" hx-swap="outerHTML"
+        hx-post="{{.Screen.CommandURL}}" hx-target="#screen" hx-swap="outerHTML show:none"
         hx-disabled-elt="button">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
 

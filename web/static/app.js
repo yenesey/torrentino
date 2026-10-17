@@ -13,21 +13,51 @@
     });
   }
 
+  var scrollBeforeSwap = null;
+
+  function focusNoScroll(element, setTabIndex) {
+    if (!element) { return; }
+    if (setTabIndex) { element.setAttribute('tabindex', '-1'); }
+    try {
+      element.focus({ preventScroll: true });
+    } catch (err) {
+      element.focus();
+    }
+  }
+
   function focusAfterSwap(event) {
+    var path = event && event.detail && event.detail.requestConfig && event.detail.requestConfig.path;
+    var savedScroll = scrollBeforeSwap;
+    scrollBeforeSwap = null;
+
+    // Search replaces the list with a new query, so starting at the top is
+    // expected. For commands and polling keep the user's scroll position.
+    if (path && path.indexOf('/find/search') !== -1) {
+      window.scrollTo(0, 0);
+    } else if (savedScroll !== null) {
+      window.scrollTo(0, savedScroll);
+      window.requestAnimationFrame(function () { window.scrollTo(0, savedScroll); });
+    }
+
     // Polling replaces the screen every five seconds; moving focus there would
     // steal it from the user. Only focus after an explicit command/search.
-    var path = event && event.detail && event.detail.requestConfig && event.detail.requestConfig.path;
     if (path && path.indexOf('poll=1') !== -1) { return; }
+
     var alert = document.querySelector('#screen [role="alert"]');
     if (alert) {
-      alert.setAttribute('tabindex', '-1');
-      alert.focus();
+      focusNoScroll(alert, true);
+      return;
+    }
+    // After selecting a row keep keyboard focus on that row instead of jumping
+    // to the heading (which used to scroll the page to the top).
+    var selected = document.querySelector('#screen .row.selected .select');
+    if (selected) {
+      focusNoScroll(selected, false);
       return;
     }
     var heading = document.querySelector('#screen h1, #screen h2');
     if (heading) {
-      heading.setAttribute('tabindex', '-1');
-      heading.focus();
+      focusNoScroll(heading, true);
     }
   }
 
@@ -36,6 +66,7 @@
   // A stale selection is a normal answer (the list changed); render its
   // fragment instead of leaving the old screen in place.
   document.addEventListener('htmx:beforeSwap', function (event) {
+    scrollBeforeSwap = window.scrollY;
     if (event.detail.xhr.status === 409 || event.detail.xhr.status === 429) {
       event.detail.shouldSwap = true;
       event.detail.isError = false;
@@ -67,7 +98,7 @@
       var current = pollTarget();
       if (!current) { stopPolling(); return; }
       if (!window.htmx) { return; }
-      window.htmx.ajax('GET', current, { target: '#screen', swap: 'outerHTML' });
+      window.htmx.ajax('GET', current, { target: '#screen', swap: 'outerHTML show:none' });
     }, 5000);
   }
   function stopPolling() {
