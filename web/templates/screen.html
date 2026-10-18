@@ -1,13 +1,4 @@
 {{define "screen"}}<main class="screen" id="screen" data-kind="{{.Screen.Kind}}" data-poll-url="{{if eq .Screen.Kind "downloads"}}{{.Base}}/downloads?fragment=1&amp;poll=1{{end}}">
-  <div class="screen-head">
-    <h1>{{.Screen.Title}}</h1>
-    <span>
-      {{if .Screen.Updated}}<span class="muted" aria-live="polite">updated {{.Screen.Updated}}</span>{{end}}
-      {{if eq .Screen.Kind "downloads"}}<a class="muted" href="{{.Base}}/downloads">Refresh</a>{{end}}
-      {{if eq .Screen.Kind "torrserver"}}<a class="muted" href="{{.Base}}/torrserver">Refresh</a>{{end}}
-    </span>
-  </div>
-
   {{if eq .Screen.Kind "find"}}
   <form class="search-form" method="post" action="{{.Base}}/find/search"
         hx-post="{{.Base}}/find/search" hx-target="#screen" hx-swap="outerHTML show:none"

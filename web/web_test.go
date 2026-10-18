@@ -510,7 +510,7 @@ func TestDownloadsScreenAndDelete(t *testing.T) {
 	if page.status != http.StatusOK {
 		t.Fatalf("downloads = %d", page.status)
 	}
-	for _, want := range []string{"Some.Movie", "seeding", "downloaded /", "volume:", "updated"} {
+	for _, want := range []string{"Some.Movie", "seeding", "downloaded /", "volume:"} {
 		if !strings.Contains(page.body, want) {
 			t.Errorf("downloads body lacks %q", want)
 		}
