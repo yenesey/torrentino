@@ -122,7 +122,8 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .row-actions { flex: 1 1 100%; }
 .actions button, .actions .linklike { min-height: 33px; padding: .3rem .5rem; line-height: 1.2; }
 .pager button { min-height: 33px; padding: .3rem .5rem; line-height: 1.2; }
-.actions .buttons { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
+.actions .buttons { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; width: 100%; }
+.actions .buttons > button, .actions .buttons > .linklike { flex: 1 1 0; min-width: 0; text-align: center; justify-content: center; display: inline-flex; align-items: center; }
 .actions button.danger { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 .banner { border-radius: .5rem; padding: .6rem .8rem; margin: .6rem 0; }
 .banner.error { background: var(--danger-soft); color: var(--danger); }
