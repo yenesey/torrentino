@@ -1,4 +1,4 @@
-# Yet another telegram bot (with an optional web UI) to manage my NAS download ecosystem
+# Go-приложение для управления «домашней» экосистемой загрузок на NAS.
 
 Integrates with:
 - [Transmission](https://github.com/transmission/transmission) - for downloads
