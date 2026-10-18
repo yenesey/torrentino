@@ -14,7 +14,7 @@ Integrates with:
 \> go build
 ```
 
-- copy [`settings.example.json`](settings.example.json) to `settings.json` and replace
+- copy [`settings.example.json`](deploy/settings.example.json) to `settings.json` and replace
   every `REPLACE_WITH_...` placeholder; the example contains no real keys, tokens or
   passwords. The file also includes an optional `web` block (disabled by default).
 
@@ -40,7 +40,7 @@ problems and exits instead of starting with broken endpoints.
 The same binary can serve a browser UI in addition to Telegram. It is disabled by
 default: without a `web` block the bot behaves exactly as before. Enable it in
 `settings.json` by copying the `web` block from
-[`settings.example.json`](settings.example.json), setting `"enabled": true`, and
+[`settings.example.json`](deploy/settings.example.json), setting `"enabled": true`, and
 generating a password hash below.
 
 The web UI needs its own accounts; Telegram `users-list` is not reused, so login
