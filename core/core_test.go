@@ -175,6 +175,12 @@ func TestFindActions(t *testing.T) {
 	if strings.Join(ids, ",") != "" {
 		t.Errorf("actions for an existing magnet result = %v", ids)
 	}
+
+	unavailable := &FindItem{Result: jackett.Result{Link: "http://x/a"}}
+	ids = ActionIDs(service.FindActions(unavailable))
+	if strings.Join(ids, ",") != "->default,->series,->movie" {
+		t.Errorf("actions for an unavailable .torrent = %v", ids)
+	}
 }
 
 func TestDoFindDownloadsToConfiguredDirectory(t *testing.T) {
