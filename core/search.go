@@ -307,6 +307,11 @@ func (s *Service) Poster(ctx context.Context, item *FindItem) string {
 	if err != nil {
 		return ""
 	}
+	// Many trackers reject empty/Go user agents with 403 even when the page is
+	// otherwise public. Use a normal browser fingerprint for this HTML fetch.
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
 	res, err := (&http.Client{}).Do(req)
 	if err != nil {
 		utils.LogError(fmt.Errorf("poster request failed: %v", requestErrorDetail(err)))

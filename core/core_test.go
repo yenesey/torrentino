@@ -451,6 +451,10 @@ func TestPosterPrefersJackettResult(t *testing.T) {
 
 func TestPosterFallsBackToImgHeuristic(t *testing.T) {
 	page := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.UserAgent(), "Mozilla/5.0") {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 		_, _ = w.Write([]byte(`<html><body>
 			<img class="logo" src="/logo.png" width="500" height="500">
 			<img class="poster" alt="Poster" src="/poster.jpg">
