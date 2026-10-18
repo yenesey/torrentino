@@ -102,6 +102,7 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .login-card input { padding: .6rem .7rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); color: var(--text); }
 .login-card button { background: var(--accent); color: #fff; border: 0; border-radius: .5rem; padding: .65rem; min-height: 44px; }
 @media (max-width: 40rem) {
+  .brand { display: none; }
   main { padding: 0; }
   .screen { padding: .65rem; border-radius: 0; border-left: 0; border-right: 0; }
   .row .meta { white-space: normal; flex: 1 1 100%; }
