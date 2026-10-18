@@ -394,7 +394,7 @@ func TestFindSearchCommandsAndActions(t *testing.T) {
 	}
 
 	selectRes := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"select:0"}}, csrf, true)
-	if selectRes.status != http.StatusOK || !strings.Contains(selectRes.body, "selected #1") {
+	if selectRes.status != http.StatusOK || !strings.Contains(selectRes.body, `class="row selected"`) {
 		t.Fatalf("select = %d, body=%s", selectRes.status, selectRes.body)
 	}
 	if !strings.Contains(selectRes.body, "download:movie") || !strings.Contains(selectRes.body, ".torrent") {
@@ -517,7 +517,7 @@ func TestDownloadsScreenAndDelete(t *testing.T) {
 	}
 
 	selectRes := env.do(t, http.MethodPost, "/ui/downloads/command", url.Values{"cmd": {"select:0"}}, csrf, true)
-	if selectRes.status != http.StatusOK || !strings.Contains(selectRes.body, "selected #1") {
+	if selectRes.status != http.StatusOK || !strings.Contains(selectRes.body, `value="action:delete"`) {
 		t.Fatalf("select = %d, body=%s", selectRes.status, selectRes.body)
 	}
 	deleted := env.do(t, http.MethodPost, "/ui/downloads/command", url.Values{"cmd": {"action:delete"}}, csrf, true)
@@ -650,7 +650,7 @@ func TestTorrserverScreenAndDelete(t *testing.T) {
 		t.Fatalf("torrserver = %d, body=%s", page.status, page.body)
 	}
 	selectRes := env.do(t, http.MethodPost, "/ui/torrserver/command", url.Values{"cmd": {"select:0"}}, csrf, true)
-	if selectRes.status != http.StatusOK || !strings.Contains(selectRes.body, "selected #1") {
+	if selectRes.status != http.StatusOK || !strings.Contains(selectRes.body, `value="action:delete"`) {
 		t.Fatalf("select = %d, body=%s", selectRes.status, selectRes.body)
 	}
 	deleted := env.do(t, http.MethodPost, "/ui/torrserver/command", url.Values{"cmd": {"action:delete"}}, csrf, true)
@@ -988,11 +988,11 @@ func TestSelectSameRowDeselects(t *testing.T) {
 	csrf := env.csrf(t)
 	env.do(t, http.MethodPost, "/find/search", url.Values{"q": {"x"}}, csrf, true)
 	first := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"select:0"}}, csrf, true)
-	if !strings.Contains(first.body, "selected #1") {
+	if !strings.Contains(first.body, `class="row selected"`) {
 		t.Fatalf("first select did not select: %s", first.body)
 	}
 	second := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"select:0"}}, csrf, true)
-	if strings.Contains(second.body, "selected #1") {
+	if strings.Contains(second.body, `class="row selected"`) {
 		t.Errorf("second select did not deselect: %s", second.body)
 	}
 }

@@ -69,7 +69,7 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .titleline .icon, .titleline .badge { margin-right: .3rem; }
 .row .title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .row .meta { color: var(--muted); font-size: .9rem; white-space: nowrap; min-width: 0; overflow-wrap: anywhere; }
-.screen-head h1, .screen-head h2, .actions h3, .banner, .footer-note { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.screen-head h1, .screen-head h2, .banner, .footer-note { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .badge { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: .05rem .5rem; font-size: .8rem; color: var(--muted); }
 .badge.status-seeding { color: var(--ok); }
 .badge.status-downloading { color: var(--accent); }
@@ -84,7 +84,7 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .chips { display: flex; flex-wrap: wrap; gap: .4rem; }
 .chips button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 999px; padding: .35rem .7rem; min-height: 36px; }
 .chips button.enabled { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-.actions { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.actions { margin: 0 0 .5rem; padding: 0 0 .5rem; border-bottom: 1px solid var(--line); }
 .actions .buttons { display: flex; gap: .5rem; flex-wrap: wrap; }
 .actions button.danger { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 .banner { border-radius: .5rem; padding: .6rem .8rem; margin: .6rem 0; }
