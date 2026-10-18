@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -994,5 +995,38 @@ func TestSelectSameRowDeselects(t *testing.T) {
 	second := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"select:0"}}, csrf, true)
 	if strings.Contains(second.body, `class="row selected"`) {
 		t.Errorf("second select did not deselect: %s", second.body)
+	}
+}
+
+func TestPageChangeDeselects(t *testing.T) {
+	env := newTestEnv(t, "/")
+	for i := 0; i < 6; i++ {
+		env.jackett.results = append(env.jackett.results, jackett.Result{
+			Title: fmt.Sprintf("result-%d", i), InfoHash: fmt.Sprintf("hash-%d", i),
+		})
+	}
+	csrf := env.csrf(t)
+	env.do(t, http.MethodPost, "/find/search", url.Values{"q": {"x"}}, csrf, true)
+	selected := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"select:0"}}, csrf, true)
+	if selected.status != http.StatusOK || !strings.Contains(selected.body, `class="row selected"`) {
+		t.Fatalf("select = %d, body=%s", selected.status, selected.body)
+	}
+
+	next := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"page:next"}}, csrf, true)
+	if next.status != http.StatusOK {
+		t.Fatalf("page next = %d", next.status)
+	}
+	if strings.Contains(next.body, `class="row selected"`) || strings.Contains(next.body, `class="actions"`) {
+		t.Errorf("selection was not cleared on page change: %s", next.body)
+	}
+	session, ok := env.server.store.Get(env.cookie(sessionCookie))
+	if !ok {
+		t.Fatal("session is missing")
+	}
+	screen := env.server.screenFor(session, KindFind)
+	screen.mu.Lock()
+	defer screen.mu.Unlock()
+	if screen.View.Selected != -1 || screen.SelectedKey != "" {
+		t.Errorf("state after page change: selected=%d key=%q", screen.View.Selected, screen.SelectedKey)
 	}
 }

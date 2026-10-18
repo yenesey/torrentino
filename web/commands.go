@@ -116,10 +116,16 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, session *
 		s.finishCommand(w, r, session, screen, http.StatusOK)
 	case "page":
 		screen.mu.Lock()
+		moved := false
 		if cmd.action == "next" {
-			screen.View.NextPage()
+			moved = screen.View.NextPage()
 		} else {
-			screen.View.PrevPage()
+			moved = screen.View.PrevPage()
+		}
+		if moved {
+			// The selected index belongs to the old page; drop the stable key
+			// too so a later reload/poll does not restore the selection.
+			screen.SelectedKey = ""
 		}
 		screen.mu.Unlock()
 		s.finishCommand(w, r, session, screen, http.StatusOK)

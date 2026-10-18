@@ -90,20 +90,23 @@ func (v *View) Deselect() {
 	v.Selected = -1
 }
 
-// NextPage moves to the next page when it exists and reports whether it did.
+// NextPage moves to the next page when it exists, clears the selection and
+// reports whether it moved.
 func (v *View) NextPage() bool {
 	if v.Page < v.LastPage() {
 		v.Page++
+		v.Selected = -1
 		return true
 	}
 	return false
 }
 
-// PrevPage moves to the previous page when it exists and reports whether it
-// did.
+// PrevPage moves to the previous page when it exists, clears the selection and
+// reports whether it moved.
 func (v *View) PrevPage() bool {
 	if v.Page > 0 {
 		v.Page--
+		v.Selected = -1
 		return true
 	}
 	return false

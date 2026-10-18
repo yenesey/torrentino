@@ -294,3 +294,29 @@ func TestDeleteWithViewAwareFilterDoesNotPanic(t *testing.T) {
 		t.Fatalf("Len = %d, want 47", v.Len())
 	}
 }
+
+func TestPagingClearsSelection(t *testing.T) {
+	v, _, _ := makeView(t, 8)
+	v.Selected = 2
+	if !v.NextPage() {
+		t.Fatal("NextPage did not move")
+	}
+	if v.Selected != -1 {
+		t.Errorf("Selected = %d after NextPage, want -1", v.Selected)
+	}
+	v.Selected = 3
+	if !v.PrevPage() {
+		t.Fatal("PrevPage did not move")
+	}
+	if v.Selected != -1 {
+		t.Errorf("Selected = %d after PrevPage, want -1", v.Selected)
+	}
+	// A no-op at a boundary must not silently change the selection.
+	v.Selected = 1
+	if v.PrevPage() {
+		t.Fatal("PrevPage moved before the first page")
+	}
+	if v.Selected != 1 {
+		t.Errorf("Selected = %d after a no-op PrevPage, want 1", v.Selected)
+	}
+}
