@@ -20,9 +20,9 @@ import (
 	"torrentino/common"
 	"torrentino/common/password"
 	"torrentino/core"
-	"torrentino/handlers/downloads"
-	"torrentino/handlers/search"
-	"torrentino/handlers/torrserver"
+	"torrentino/telegram/downloads"
+	"torrentino/telegram/search"
+	"torrentino/telegram/torrserver"
 	"torrentino/web"
 )
 

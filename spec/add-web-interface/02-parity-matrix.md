@@ -1,7 +1,7 @@
 # 02. Матрица паритета: Telegram → Web
 
-Источник истины — текущий код: `main.go`, `common/paginator/*`, `handlers/*`, `api/*`.
-Ссылки вида `handlers/search/search.go:118` даны по состоянию на коммит `75172f9`.
+Источник истины — текущий код: `main.go`, `common/paginator/*`, `telegram/*`, `api/*`.
+Ссылки вида `telegram/search/search.go:118` даны по состоянию на коммит `75172f9`.
 Паритет означает: доступна та же информация и те же операции с теми же правилами
 (сортировка, фильтрация, границы страниц, доступность действий), а не совпадение вёрстки
 и текста сообщений.
@@ -73,7 +73,7 @@
 
 | # | Возможность | Telegram | Web v1 | Паритет |
 |---|---|---|---|---|
-| T1 | Список | `torrserver.List()` (`handlers/torrserver/torrserver.go:74`) | тот же вызов | да |
+| T1 | Список | `torrserver.List()` (`telegram/torrserver/torrserver.go:74`) | тот же вызов | да |
 | T2 | Строка | `Title [size]` (`torrserver.go:32`) | то же | да |
 | T3 | Сортировка | `Size` order 1 (`torrserver.go:90`) | та же | да |
 | T4 | Фильтры | нет (`SetupFiltering` не вызывается) | нет | да |

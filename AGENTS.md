@@ -19,7 +19,8 @@
 веб-интерфейс `web`).
 
 Тесты: `common/settings_test.go`, `common/list/list_test.go`, `common/password/password_test.go`,
-`common/paginator/paginator_test.go`, `core/core_test.go`, `api/torrserver/torrserver_test.go`,
+`common/paginator/paginator_test.go`, `core/core_test.go`, `core/presentation/presentation_test.go`,
+`api/torrserver/torrserver_test.go`,
 `web/*_test.go` (включая интеграционные через `httptest`).
 
 ## Сборка и запуск
@@ -80,6 +81,7 @@ core/
   downloads.go              DownloadItem, Downloads (Transmission + диск), сортировки, действия, пути
   torrserver.go             TorrserverItem, список/сортировка/delete
   screens.go                общие дескрипторы сортировок и фильтров экранов
+  presentation/             общие вычисляемые значения строк и итогов загрузок
   core_test.go              юнит-тесты домена с фейками
 web/
   server.go, middleware.go  HTTP-сервер, маршруты, base-path, логи, заголовки, auth/CSRF middleware
@@ -94,7 +96,7 @@ api/
   transmission/transmission.go  тонкие обёртки над transmissionrpc/v2 (клиент через sync.Once)
   torrserver/torrserver.go  JSON-over-HTTP POST /torrents, помощник post()
   torrserver/torrserver_test.go тесты экранирования, инъекции и разбора ответа
-handlers/
+telegram/
   search/search.go          Telegram-рендер поиска; домен — core.Service
   downloads/downloads.go    Telegram-рендер списка загрузок, автообновление раз в 5 с
   torrserver/torrserver.go  Telegram-рендер Torrserver
@@ -108,8 +110,9 @@ update-service.sh           сборка → stop → mv в /opt/torrentino → 
 `Sorting`, `Evaluator`, `Select`/`NextPage`/`ToggleSorting`/`ToggleFilter`/`ExecuteSelected`).
 `core` — домен: элементы (`FindItem`, `DownloadItem`, `TorrserverItem`), `Service`,
 `AvailableActions`, `Do*`, `TorrentFile`, обход диска и дескрипторы сортировок/фильтров
-(`FindSorting`, `DownloadsFilters`, …). Telegram-хендлеры и web рендерят одно и то же
-состояние и не дублируют правила. `web` не импортирует `handlers` и `api/*` напрямую.
+(`FindSorting`, `DownloadsFilters`, …). `core/presentation` вычисляет общие для Telegram
+и web значения строк (размеры, проценты, статусы, итоги загрузок), а каждый интерфейс
+добавляет только свой markup. `web` не импортирует `telegram` и `api/*` напрямую.
 
 **Паттерн экрана.** Каждый Telegram-экран — структура, встраивающая `paginator.Paginator`, и
 переопределяющая методы через интерфейсы:
@@ -148,8 +151,10 @@ htmx.min.js}`. Все действия — POST с CSRF; GET ничего не �
 ## Соглашения
 
 - Отступы — табы (`.editorconfig`, `indent_size = 4`).
-- Один Telegram-экран — один пакет в `handlers/`, внешний сервис — один пакет в `api/`.
+- Один Telegram-экран — один пакет в `telegram/`, внешний сервис — один пакет в `api/`.
 - Общие вещи — в `common/` или `core/`; UI-агностичное состояние списка — в `common/list`.
+- Вычисляемые значения для отображения — в `core/presentation`; HTML/Telegram-markup — только
+  в `web`/`telegram`.
 - Ошибки оборачиваются `github.com/pkg/errors` и логируются через `utils.LogError`
   (печатает файл, строку и имя функции). Исключение — `common/settings.go`: там
   используется stdlib `errors` / `fmt.Errorf` с `%w`, а конфигурационные ошибки
@@ -171,9 +176,10 @@ htmx.min.js}`. Все действия — POST с CSRF; GET ничего не �
 - UI-текст — HTML (`ParseModeHTML`), с emoji-индикаторами: 📥 в Transmission,
   🎦 в Torrserver, 🧲 magnet, 📎 .torrent, 🎬/🎧 по расширению.
 - Комментарии в коде — смесь английского и русского.
-- Правила импортов: `web` → `core`, `common`, stdlib (не `handlers`/`api/*`/Telegram);
-  `handlers` → `core`, `common/paginator`, `common`; `core` → `api/*`, `common`,
-  `common/list`; `common/list` → stdlib, `common/ordmap`, `common/utils`; `api/*` → `common`.
+- Правила импортов: `web` → `core`, `core/presentation`, `common`, stdlib (не
+  `telegram`/`api/*`); `telegram` → `core`, `core/presentation`, `common/paginator`,
+  `common`; `core` → `api/*`, `common`, `common/list`; `core/presentation` → `core`,
+  `common/utils`; `common/list` → stdlib, `common/ordmap`, `common/utils`; `api/*` → `common`.
 
 ## Подводные камни
 
@@ -210,7 +216,7 @@ htmx.min.js}`. Все действия — POST с CSRF; GET ничего не �
    сообщение. `updater` в `downloads` тоже один: новый `/downloads` отменяет предыдущий.
 5. **Автообновление `/downloads`** — горутина с тикером 5 с, перерисовывает сообщение
    каждые 5 секунд, пока не отменён контекст.
-6. **Удаление файлов.** В `handlers/downloads` для позиций со статусом `unknown`
+6. **Удаление файлов.** В `telegram/downloads` для позиций со статусом `unknown`
    (файлы на диске, которых нет в Transmission) действие `delete` вызывает
    `os.Remove`/`os.RemoveAll` напрямую — это необратимо.
 7. **Разбор callback-данных** (исправлено в `Paginator.dispatch`, есть тесты в

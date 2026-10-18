@@ -9,6 +9,7 @@ import (
 	"torrentino/common/paginator"
 	"torrentino/common/utils"
 	"torrentino/core"
+	"torrentino/core/presentation"
 )
 
 type TorrserverPaginator struct {
@@ -32,9 +33,8 @@ func (p *TorrserverPaginator) Item(i int) *core.TorrserverItem {
 
 // method overload
 func (p *TorrserverPaginator) Line(i int) string {
-	item := p.Item(i)
-	return item.Title +
-		" [" + utils.FormatFileSize(uint64(item.Torrent_Size)) + "]"
+	row := presentation.NewTorrserverRow(p.Item(i))
+	return row.Title + " [" + row.TorrentSize + "]"
 }
 
 // method overload

@@ -2,10 +2,9 @@ package web
 
 import (
 	"fmt"
-	"math"
 
-	"torrentino/common/utils"
 	"torrentino/core"
+	"torrentino/core/presentation"
 )
 
 // NavItem is one header navigation link.
@@ -75,37 +74,13 @@ type ScreenView struct {
 }
 
 type Row struct {
-	Index    int
-	Number   int
-	Selected bool
+	presentation.Item
 
-	// find
-	Title        string
-	Size         string
-	Tracker      string
-	Seeds        uint
-	Peers        uint
-	HasLink      bool
-	HasMagnet    bool
-	InTorrents   bool
-	InTorrserver bool
-	DetailsURL   string
-	TorrentURL   string
-
-	// downloads
-	Icon         string
-	Name         string
-	Status       string
-	Percent      string
-	PercentValue int
-	Ratio        string
-	OnDisk       bool
-	IsDir        bool
-	Ext          string
-	ExtCount     int
-
-	// torrserver
-	TorrentSize string
+	Index      int
+	Number     int
+	Selected   bool
+	DetailsURL string
+	TorrentURL string
 }
 
 type SortingView struct {
@@ -260,12 +235,10 @@ func (s *Server) buildScreenViewLocked(screen *Screen) ScreenView {
 				items = append(items, item)
 			}
 		}
-		downloaded, uploaded := core.DownloadTotals(items)
-		view.Footer = utils.FormatFileSize(downloaded) + " downloaded / " +
-			utils.FormatFileSize(uploaded) + " uploaded"
-		if screen.stats.OK {
-			view.Footer += " · volume: " + utils.FormatFileSize(screen.stats.Used) + " used / " +
-				utils.FormatFileSize(screen.stats.Free) + " free"
+		summary := presentation.NewDownloadSummary(items, screen.stats)
+		view.Footer = summary.Downloaded + " downloaded / " + summary.Uploaded + " uploaded"
+		if summary.HasVolume {
+			view.Footer += " · volume: " + summary.Used + " used / " + summary.Free + " free"
 		}
 	}
 	return view
@@ -276,41 +249,15 @@ func (s *Server) buildRowLocked(screen *Screen, i int) Row {
 	row := Row{Index: i, Number: i + 1, Selected: screen.View.Selected == i}
 	switch item := screen.View.Item(i).(type) {
 	case *core.FindItem:
-		row.Title = item.Title
-		row.Size = utils.FormatFileSize(uint64(item.Size))
-		row.Tracker = item.TrackerId
-		row.Seeds = item.Seeders
-		row.Peers = item.Peers
-		row.HasLink = item.Link != ""
-		row.HasMagnet = item.MagnetUri != ""
-		row.InTorrents = item.InTorrents
-		row.InTorrserver = item.InTorrserver
+		row.Item = presentation.NewFindRow(item)
 		if core.SafeHTTPURL(item.Details) {
 			row.DetailsURL = item.Details
 		}
 		row.TorrentURL = fmt.Sprintf("%s?item=%d", s.base.URL("/find/torrent"), i)
 	case *core.DownloadItem:
-		row.Name = item.NameValue()
-		row.Icon = item.Icon()
-		row.Status = item.Status
-		percent := item.PercentDoneValue() * 100
-		if percent < 0 {
-			percent = 0
-		}
-		if percent > 100 {
-			percent = 100
-		}
-		row.PercentValue = int(math.Round(percent))
-		row.Percent = fmt.Sprintf("%d%%", row.PercentValue)
-		row.Ratio = fmt.Sprintf("%.2fx", item.UploadRatioValue())
-		row.OnDisk = item.Status == "unknown"
-		row.IsDir = item.IsDir
-		row.Ext = item.Ext
-		row.ExtCount = item.ExtCount
-		row.Size = utils.FormatFileSize(uint64(item.DownloadedEverValue()))
+		row.Item = presentation.NewDownloadRow(item)
 	case *core.TorrserverItem:
-		row.Title = item.Title
-		row.TorrentSize = utils.FormatFileSize(uint64(item.Torrent_Size))
+		row.Item = presentation.NewTorrserverRow(item)
 	}
 	return row
 }

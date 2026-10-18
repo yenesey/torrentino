@@ -11,6 +11,7 @@ import (
 	"torrentino/common/paginator"
 	"torrentino/common/utils"
 	"torrentino/core"
+	"torrentino/core/presentation"
 )
 
 type FindPaginator struct {
@@ -38,32 +39,24 @@ func (p *FindPaginator) Item(i int) *core.FindItem {
 
 // method overload
 func (p *FindPaginator) Line(i int) string {
-
-	item := p.Item(i)
-	return item.Title +
-		" [" + utils.FormatFileSize(uint64(item.Size)) + "] [" + item.TrackerId + "]" +
-		" [" + strconv.Itoa(int(item.Seeders)) + "s/" + strconv.Itoa(int(item.Peers)) + "p]" +
-		(func() string {
-			if item.Link != "" {
-				return " 📎"
-			}
-			return ""
-		})() +
-		(func() string {
-			if item.MagnetUri != "" {
-				return " 🧲"
-			}
-			return ""
-		})() +
-		(func() (result string) {
-			if item.InTorrents {
-				result += " 📥"
-			}
-			if item.InTorrserver {
-				result += " 🎦"
-			}
-			return
-		})()
+	row := presentation.NewFindRow(p.Item(i))
+	result := row.Title +
+		" [" + row.Size + "] [" + row.Tracker + "]" +
+		" [" + strconv.FormatUint(uint64(row.Seeds), 10) + "s/" +
+		strconv.FormatUint(uint64(row.Peers), 10) + "p]"
+	if row.HasLink {
+		result += " 📎"
+	}
+	if row.HasMagnet {
+		result += " 🧲"
+	}
+	if row.InTorrents {
+		result += " 📥"
+	}
+	if row.InTorrserver {
+		result += " 🎦"
+	}
+	return result
 }
 
 // method overload

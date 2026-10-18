@@ -8,9 +8,9 @@
   три обработчика: поиск (default handler), `/downloads`, `/torrserver`;
 - UI строится вокруг `common/paginator`: сообщение + inline-клавиатура, страницы по 4
   элемента, сортировки, фильтры, действия;
-- доменная логика размазана по `handlers/*` и `api/*`: `handlers/search` сам вызывает
-  Jackett, Transmission и Torrserver, `handlers/downloads` читает диск и `statfs`,
-  `handlers/torrserver` дергает Torrserver;
+- доменная логика размазана по `telegram/*` и `api/*`: `telegram/search` сам вызывает
+  Jackett, Transmission и Torrserver, `telegram/downloads` читает диск и `statfs`,
+  `telegram/torrserver` дергает Torrserver;
 - состояние экранов глобальное: `paginator.Handlers` хранит один handler на префикс,
   а сам `Paginator` живёт в замыкании обработчика.
 

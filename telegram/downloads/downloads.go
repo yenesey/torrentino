@@ -2,7 +2,6 @@ package downloads
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"torrentino/common/paginator"
 	"torrentino/common/utils"
 	"torrentino/core"
+	"torrentino/core/presentation"
 )
 
 type ListPaginator struct {
@@ -36,29 +36,23 @@ func (p *ListPaginator) Item(i int) *core.DownloadItem {
 
 // method overload
 func (p *ListPaginator) Line(i int) string {
+	row := presentation.NewDownloadRow(p.Item(i))
 	result := ""
-	item := p.Item(i)
-	if item.IsDir {
-		result = "📁[" + strconv.Itoa(item.ExtCount) + "x | " + item.Ext + "]"
+	if row.IsDir {
+		result = "📁[" + strconv.Itoa(row.ExtCount) + "x | " + row.Ext + "]"
 	}
 
-	result = result +
-		item.Icon() +
-		item.NameValue() +
-		" [" + utils.FormatFileSize(uint64(item.DownloadedEverValue())) + "]" +
-		" [" + fmt.Sprintf("%.0f", item.PercentDoneValue()*100) + "%]" +
-		" [" + fmt.Sprintf("%.2f", item.UploadRatioValue()) + "x]" +
-		(func() string {
-			switch item.Status {
-			case "seeding":
-				return " [" + item.Status + ":" + fmt.Sprintf("%dp", item.PeersGettingFromUsValue()) + "]"
-			case "downloading":
-				return " [" + item.Status + ":" + fmt.Sprintf("%dp", item.PeersSendingToUsValue()) + "]"
-			}
-			return " [" + item.Status + "]"
-		})()
+	result += row.Icon + row.Name +
+		" [" + row.Size + "]" +
+		" [" + row.Percent + "]" +
+		" [" + row.Ratio + "]"
 
-	return result
+	switch row.Status {
+	case "seeding", "downloading":
+		return result + " [" + row.Status + ":" + strconv.FormatUint(row.StatusPeers, 10) + "p]"
+	default:
+		return result + " [" + row.Status + "]"
+	}
 }
 
 // method overload
@@ -67,14 +61,10 @@ func (p *ListPaginator) Footer() string {
 	for i := 0; i < p.Len(); i++ {
 		items = append(items, p.Item(i))
 	}
-	downloaded, uploaded := core.DownloadTotals(items)
-
-	result := utils.FormatFileSize(downloaded) + " download / " +
-		utils.FormatFileSize(uploaded) + " upload"
-	if p.stats.OK {
-		result += " " + "\nvolume: " +
-			utils.FormatFileSize(p.stats.Used) + " used / " +
-			utils.FormatFileSize(p.stats.Free) + " free"
+	summary := presentation.NewDownloadSummary(items, p.stats)
+	result := summary.Downloaded + " download / " + summary.Uploaded + " upload"
+	if summary.HasVolume {
+		result += " \nvolume: " + summary.Used + " used / " + summary.Free + " free"
 	}
 	return result
 }

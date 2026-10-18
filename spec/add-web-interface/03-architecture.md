@@ -5,9 +5,9 @@
 ```
 main.go
  ├── ACL-middleware (users-list)
- ├── default handler ──► handlers/search     ─┐
- ├── /downloads ───────► handlers/downloads   ├──► api/jackett
- └── /torrserver ──────► handlers/torrserver  ├──► api/transmission
+ ├── default handler ──► telegram/search     ─┐
+ ├── /downloads ───────► telegram/downloads   ├──► api/jackett
+ └── /torrserver ──────► telegram/torrserver  ├──► api/transmission
                                              └──► api/torrserver
 common/paginator: Telegram-сообщение + inline-клавиатура + List (сортировки/фильтры)
 common/settings, common/utils
@@ -15,7 +15,7 @@ common/settings, common/utils
 
 Особенности, важные для второго UI:
 
-- `handlers/*` одновременно содержат UI (форматирование строк, `Builder/Actor/Evaluator`)
+- `telegram/*` одновременно содержат UI (форматирование строк, `Builder/Actor/Evaluator`)
   и доменную логику (вызовы `api/*`, обход диска, `Statfs`, скрейпинг постера).
 - `common/paginator/paginator.go` жёстко привязан к Telegram (`bot.Bot`, `models.Update`,
   callback-данные, `EditMessageText`). При этом `common/paginator/list.go` — чистый,
@@ -25,7 +25,7 @@ common/settings, common/utils
 - Состояние экранов глобальное: `paginator.Handlers` — один handler на префикс на процесс.
 - `api/jackett` и `api/torrserver` читают `common.Settings` во время вызова (это правильно),
   но не принимают контекст; `api/transmission` использует `context.TODO()`.
-- В `handlers/search` есть сетевые вызовы внутри «геттеров»: `Actions(i)` скачивает
+- В `telegram/search` есть сетевые вызовы внутри «геттеров»: `Actions(i)` скачивает
   `.torrent` для InfoHash, `Execute` скрейпит страницу постера без таймаута
   (`htmlquery.LoadURL`), а `.torrent` качается `http.Get` без таймаута и не закрывает body.
 
@@ -48,7 +48,7 @@ common/settings, common/utils
 ```
                          main.go
                         /       \
-             handlers/* (Telegram)  web/* (HTTP)
+             telegram/* (Telegram)  web/* (HTTP)
                      \               /
                       \             /
                        core/  (Service, Item, Action)
@@ -65,12 +65,13 @@ common/*      — Settings, utils, ordmap
 
 | Пакет | Может импортировать | Не может |
 |---|---|---|
-| `web` | `core`, `common`, stdlib | `handlers`, `api/*` напрямую, `go-telegram/*` |
-| `handlers` | `core`, `common/paginator`, `common` | `web`, `api/*` напрямую (после Phase 0) |
-| `core` | `api/*`, `common`, `common/list` | `web`, `handlers`, `common/paginator`, Telegram |
+| `web` | `core`, `core/presentation`, `common`, stdlib | `telegram`, `api/*` напрямую, `go-telegram/*` |
+| `telegram` | `core`, `core/presentation`, `common/paginator`, `common` | `web`, `api/*` напрямую (после Phase 0) |
+| `core` | `api/*`, `common`, `common/list` | `web`, `telegram`, `core/presentation`, `common/paginator`, Telegram |
+| `core/presentation` | `core`, `common/utils` | `web`, `telegram`, `api/*` |
 | `common/list` | stdlib, `common/ordmap`, `common/utils`, `pkg/errors` | всё остальное |
 | `common/paginator` | `common/list`, Telegram | `core`, `web` |
-| `api/*` | `common` | `core`, `web`, `handlers` |
+| `api/*` | `common` | `core`, `web`, `telegram` |
 
 `common.Settings` и клиенты `api/*` остаются глобальными, как сейчас: конфиг читается
 один раз в `main()`, поэтому `api/*` обязаны читать настройки во время вызова
@@ -176,7 +177,7 @@ func (s *Service) Do(ctx context.Context, item *FindItem, action string) error
 
 ### 4.4. Хендлеры становятся рендерерами
 
-`handlers/search`, `handlers/downloads`, `handlers/torrserver`:
+`telegram/search`, `telegram/downloads`, `telegram/torrserver`:
 
 - `Reload` вызывает `core.Service`;
 - `Line`/`Header`/`Footer` остаются Telegram-форматированием;
