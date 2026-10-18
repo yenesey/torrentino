@@ -1057,7 +1057,4 @@ func TestFindSelectIgnoresHashResolutionFailure(t *testing.T) {
 	if strings.Contains(selected.body, `>.torrent</a>`) {
 		t.Errorf("unavailable .torrent action is still rendered: %s", selected.body)
 	}
-	if strings.Contains(selected.body, `value="action:torrsrv"`) {
-		t.Errorf("unavailable torrsrv action is still rendered: %s", selected.body)
-	}
 }

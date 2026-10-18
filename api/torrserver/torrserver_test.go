@@ -2,6 +2,7 @@ package torrserver
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -149,5 +150,18 @@ func TestAddReportsServerMessage(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unsupported action") {
 		t.Errorf("error = %v, want it to carry the server message", err)
+	}
+}
+
+func TestAddBadRequestIsTyped(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "bad torrent", http.StatusBadRequest)
+	}))
+	defer srv.Close()
+	pointAt(t, srv)
+
+	err := Add("magnet:?xt=urn:btih:REAL", "title", "")
+	if !errors.Is(err, ErrBadRequest) {
+		t.Errorf("error = %v, want ErrBadRequest", err)
 	}
 }

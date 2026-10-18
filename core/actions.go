@@ -28,6 +28,8 @@ var (
 	ErrUnsafePath = errors.New("path is outside the configured download roots")
 	// ErrTorrentTooLarge means a .torrent download exceeded the size limit.
 	ErrTorrentTooLarge = errors.New("torrent file is too large")
+	// ErrTorrentUnavailable means Torrserver rejected the torrent link.
+	ErrTorrentUnavailable = errors.New("torrent is unavailable")
 	// ErrInvalidInput means a query or command value is syntactically invalid.
 	ErrInvalidInput = errors.New("invalid input")
 )

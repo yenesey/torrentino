@@ -70,6 +70,7 @@ type fakeTorrserver struct {
 	adds    []string
 	removed []string
 	listErr error
+	addErr  error
 }
 
 func (f *fakeTorrserver) List(ctx context.Context) ([]torrserver.TSListItem, error) {
@@ -77,7 +78,7 @@ func (f *fakeTorrserver) List(ctx context.Context) ([]torrserver.TSListItem, err
 }
 func (f *fakeTorrserver) Add(ctx context.Context, link string, title string, poster string) error {
 	f.adds = append(f.adds, link+"|"+title+"|"+poster)
-	return nil
+	return f.addErr
 }
 func (f *fakeTorrserver) Delete(ctx context.Context, hash string) error {
 	f.removed = append(f.removed, hash)
@@ -178,7 +179,7 @@ func TestFindActions(t *testing.T) {
 
 	unavailable := &FindItem{Result: jackett.Result{Link: "http://x/a"}}
 	ids = ActionIDs(service.FindActions(unavailable))
-	if strings.Join(ids, ",") != "->default,->series,->movie" {
+	if strings.Join(ids, ",") != "->default,->series,->movie,torrsrv" {
 		t.Errorf("actions for an unavailable .torrent = %v", ids)
 	}
 }
@@ -495,5 +496,15 @@ func TestProbeTorrent(t *testing.T) {
 	}
 	if item.TorrentAvailable {
 		t.Error("TorrentAvailable is true after a failed probe")
+	}
+}
+
+func TestDoFindMapsTorrserverBadRequest(t *testing.T) {
+	service, _, _, ts := testService()
+	ts.addErr = torrserver.ErrBadRequest
+	item := &FindItem{Result: jackett.Result{Link: "http://x/a"}}
+	err := service.DoFind(context.Background(), item, "torrsrv")
+	if !errors.Is(err, ErrTorrentUnavailable) {
+		t.Errorf("error = %v, want ErrTorrentUnavailable", err)
 	}
 }

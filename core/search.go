@@ -17,6 +17,7 @@ import (
 	"golang.org/x/net/html"
 
 	"torrentino/api/jackett"
+	"torrentino/api/torrserver"
 	"torrentino/common"
 	"torrentino/common/utils"
 )
@@ -157,7 +158,7 @@ func (s *Service) FindActions(item *FindItem) []Action {
 			Action{ID: "->movie", Label: "->movie"},
 		)
 	}
-	if !item.InTorrserver && (item.MagnetUri != "" || (item.TorrentAvailable && item.Link != "")) {
+	if !item.InTorrserver {
 		result = append(result, Action{ID: "torrsrv", Label: "torrsrv"})
 	}
 	if item.TorrentAvailable && item.Link != "" {
@@ -215,18 +216,14 @@ func (s *Service) DoFind(ctx context.Context, item *FindItem, action string) err
 		item.InTorrents = true
 		return nil
 	case "torrsrv":
-		// Prefer a magnet: Torrserver fetches it itself. A .torrent link is
-		// only usable after the availability probe succeeded; otherwise the
-		// upstream returns a bare 400 and the UI misreports it as an outage.
-		torrLink := item.MagnetUri
-		if torrLink == "" {
-			if !item.TorrentAvailable || item.Link == "" {
-				return fmt.Errorf("%w: .torrent is unavailable", ErrNotAvailable)
-			}
-			torrLink = item.Link
+		if link == "" {
+			return fmt.Errorf("%w: result has neither a link nor a magnet", ErrNotAvailable)
 		}
 		poster := s.Poster(ctx, item)
-		if err := s.Torrserver.Add(ctx, torrLink, item.Title, poster); err != nil {
+		if err := s.Torrserver.Add(ctx, link, item.Title, poster); err != nil {
+			if errors.Is(err, torrserver.ErrBadRequest) {
+				return fmt.Errorf("%w: %v", ErrTorrentUnavailable, err)
+			}
 			return Upstream(err)
 		}
 		item.InTorrserver = true

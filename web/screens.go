@@ -290,6 +290,8 @@ func describeError(err error) string {
 		return "The service is unavailable. Try again."
 	case errors.Is(err, core.ErrTorrentTooLarge):
 		return "The torrent file is too large."
+	case errors.Is(err, core.ErrTorrentUnavailable):
+		return "The torrent is unavailable. Try another result."
 	case errors.Is(err, errTooManySearches):
 		return "Too many searches. Try again in a minute."
 	case errors.Is(err, errUpdateFailed):

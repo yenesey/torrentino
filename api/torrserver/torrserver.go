@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -43,6 +44,10 @@ type TSListItem struct {
 */
 
 const requestTimeout = 3 * time.Second
+
+// ErrBadRequest marks a 400 response from Torrserver. Callers can map it to a
+// user-facing "torrent unavailable" message instead of a generic outage.
+var ErrBadRequest = errors.New("torrserver rejected the request")
 
 // Request bodies are built as structs and serialized by encoding/json, never by
 // string concatenation: titles, links and posters come from torrent trackers and
@@ -105,10 +110,16 @@ func post(parent context.Context, payload any, timeout time.Duration) ([]byte, e
 	}
 	if res.StatusCode != http.StatusOK {
 		detail := strings.TrimSpace(string(data))
+		var err error
 		if detail == "" {
-			return nil, fmt.Errorf("request error: %s", res.Status)
+			err = fmt.Errorf("request error: %s", res.Status)
+		} else {
+			err = fmt.Errorf("request error: %s: %s", res.Status, detail)
 		}
-		return nil, fmt.Errorf("request error: %s: %s", res.Status, detail)
+		if res.StatusCode == http.StatusBadRequest {
+			return nil, fmt.Errorf("%w: %v", ErrBadRequest, err)
+		}
+		return nil, err
 	}
 	return data, nil
 }
