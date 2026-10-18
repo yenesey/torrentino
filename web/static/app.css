@@ -64,6 +64,7 @@ button { cursor: pointer; }
 .topbar nav a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: .75rem; flex: 0 0 auto; }
 .userbox { display: flex; align-items: center; gap: .75rem; }
+.userbox .linklike { height: 33px; min-height: 33px; padding: 0 .6rem; display: inline-flex; align-items: center; line-height: 1; }
 .theme-toggle { width: 33px; height: 33px; min-width: 33px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: .5rem; font-size: 1rem; line-height: 1; cursor: pointer; }
 [hidden] { display: none !important; }
 .username { color: var(--muted); }
