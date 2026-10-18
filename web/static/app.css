@@ -31,12 +31,13 @@ body {
   background: var(--bg);
   color: var(--text);
   font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 a { color: var(--accent); }
 button, input { font: inherit; }
 button { cursor: pointer; }
 .topbar {
+  position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
   padding: .6rem 1rem; background: var(--panel); border-bottom: 1px solid var(--line);
 }
