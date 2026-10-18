@@ -84,12 +84,6 @@
     </ul>
     {{end}}
 
-    <div class="pager">
-      <button type="submit" name="cmd" value="page:prev" {{if not .Screen.HasPrev}}disabled{{end}}>◀ Prev</button>
-      <span class="muted">page {{inc .Screen.Page}} of {{inc .Screen.LastPage}}</span>
-      <button type="submit" name="cmd" value="page:next" {{if not .Screen.HasNext}}disabled{{end}}>Next ▶</button>
-    </div>
-
     {{if .Screen.SelectedRow}}
     <div class="actions">
       <h3>selected #{{.Screen.SelectedNumber}}:
@@ -111,6 +105,13 @@
     </div>
     {{end}}
 
-    {{if .Screen.Footer}}<div class="footer-note"><span>{{.Screen.Footer}}</span></div>{{end}}
+    <div class="bottom-bar">
+      <div class="pager">
+        <button type="submit" name="cmd" value="page:prev" {{if not .Screen.HasPrev}}disabled{{end}}>◀ Prev</button>
+        <span class="muted">page {{inc .Screen.Page}} of {{inc .Screen.LastPage}}</span>
+        <button type="submit" name="cmd" value="page:next" {{if not .Screen.HasNext}}disabled{{end}}>Next ▶</button>
+      </div>
+      {{if .Screen.Footer}}<div class="footer-note"><span>{{.Screen.Footer}}</span></div>{{end}}
+    </div>
   </form>
 </main>{{end}}
