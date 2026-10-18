@@ -85,7 +85,9 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .chips button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 999px; padding: .35rem .7rem; min-height: 36px; }
 .chips button.enabled { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .actions { margin: 0 0 .5rem; padding: 0 0 .5rem; border-bottom: 1px solid var(--line); }
-.actions .buttons { display: flex; gap: .5rem; flex-wrap: wrap; }
+.actions button, .actions .linklike { min-height: 33px; padding: .3rem .5rem; line-height: 1.2; }
+.pager button { min-height: 33px; padding: .3rem .5rem; line-height: 1.2; }
+.actions .buttons { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
 .actions button.danger { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 .banner { border-radius: .5rem; padding: .6rem .8rem; margin: .6rem 0; }
 .banner.error { background: var(--danger-soft); color: var(--danger); }
