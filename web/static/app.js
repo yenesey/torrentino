@@ -52,6 +52,41 @@
   var scrollBeforeSwap = null;
   var pendingScrollRestore = null;
 
+  var busyOverlay = document.getElementById('busy');
+  var busyScreen = document.getElementById('screen');
+  function setBusy(on) {
+    if (busyOverlay) { busyOverlay.hidden = !on; }
+    if (busyScreen) {
+      if (on) {
+        busyScreen.setAttribute('inert', '');
+        busyScreen.setAttribute('aria-busy', 'true');
+      } else {
+        busyScreen.removeAttribute('inert');
+        busyScreen.setAttribute('aria-busy', 'false');
+      }
+    }
+    document.body.classList.toggle('is-busy', on);
+  }
+  function requestPath(event) {
+    return event && event.detail && event.detail.requestConfig && event.detail.requestConfig.path;
+  }
+  function isPoll(event) {
+    var path = requestPath(event);
+    return !!path && path.indexOf('poll=1') !== -1;
+  }
+  document.addEventListener('htmx:beforeRequest', function (event) {
+    if (!isPoll(event)) { setBusy(true); }
+  });
+  document.addEventListener('htmx:afterSettle', function (event) {
+    if (!isPoll(event)) { setBusy(false); }
+  });
+  document.addEventListener('htmx:afterRequest', function (event) {
+    if (!isPoll(event) && event.detail && !event.detail.successful) { setBusy(false); }
+  });
+  document.addEventListener('htmx:sendError', function (event) {
+    if (!isPoll(event)) { setBusy(false); }
+  });
+
   function restoreScroll(y) {
     window.scrollTo(0, y);
     window.requestAnimationFrame(function () { window.scrollTo(0, y); });

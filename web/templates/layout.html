@@ -26,6 +26,9 @@
     </div>
   </header>
   {{template "screen" .}}
+  <div id="busy" class="busy-overlay" role="status" aria-live="polite" hidden>
+    <div class="busy-box"><span class="spinner" aria-hidden="true"></span><span>Working…</span></div>
+  </div>
   <footer class="pagefoot">build {{.Build}}</footer>
   <script src="{{.Base}}/static/htmx.min.js?v={{.StaticVersion}}"></script>
   <script src="{{.Base}}/static/app.js?v={{.StaticVersion}}"></script>
