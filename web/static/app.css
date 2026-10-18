@@ -123,7 +123,7 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .actions button, .actions .linklike { min-height: 33px; padding: .3rem .5rem; line-height: 1.2; }
 .pager button { min-height: 33px; padding: .3rem .5rem; line-height: 1.2; }
 .actions .buttons { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; width: 100%; }
-.actions .buttons > button, .actions .buttons > .linklike { flex: 1 1 calc((100% - 1rem) / 3); min-width: 0; text-align: center; justify-content: center; display: inline-flex; align-items: center; }
+.actions .buttons > button, .actions .buttons > .linklike { flex: 1 1 0; min-width: 0; text-align: center; justify-content: center; display: inline-flex; align-items: center; }
 .actions button.danger { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 .banner { border-radius: .5rem; padding: .6rem .8rem; margin: .6rem 0; }
 .banner.error { background: var(--danger-soft); color: var(--danger); }
@@ -151,5 +151,14 @@ button.primary:disabled { opacity: .6; cursor: progress; }
   .row > .meta { white-space: normal; flex: 1 1 100%; }
   .meta-line { flex: 1 1 100%; justify-content: flex-start; }
   .topbar { gap: .5rem; }
+}
+@media (max-width: 60rem) {
+  .actions .buttons > button, .actions .buttons > .linklike { flex-basis: calc((100% - 1.5rem) / 4); }
+}
+@media (max-width: 40rem) {
+  .actions .buttons > button, .actions .buttons > .linklike { flex-basis: calc((100% - 1rem) / 3); }
+}
+@media (max-width: 26rem) {
+  .actions .buttons > button, .actions .buttons > .linklike { flex-basis: calc((100% - .5rem) / 2); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
