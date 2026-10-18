@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -41,6 +42,13 @@ type WebSession struct {
 type WebTLS struct {
 	Cert string `json:"cert"`
 	Key  string `json:"key"`
+}
+
+// FlareSolverrStruct configures the optional local FlareSolverr fallback for
+// tracker pages that reject the direct HTTP request.
+type FlareSolverrStruct struct {
+	URL     string `json:"url"`
+	Timeout string `json:"timeout"`
 }
 
 // WebStruct configures the optional HTTP interface. When Enabled is false the
@@ -79,7 +87,8 @@ type SettingsStruct struct {
 		Series  string `json:"series"`
 	} `json:"path"`
 
-	Web WebStruct `json:"web"`
+	FlareSolverr FlareSolverrStruct `json:"flaresolverr"`
+	Web          WebStruct          `json:"web"`
 }
 
 var Settings SettingsStruct
@@ -146,6 +155,11 @@ func (s *SettingsStruct) WebSessionIdle() time.Duration {
 // WebSessionMaxAge returns the absolute session lifetime, defaulting to 168h.
 func (s *SettingsStruct) WebSessionMaxAge() time.Duration {
 	return durationOr(s.Web.Session.MaxAge, 168*time.Hour)
+}
+
+// FlareSolverrTimeout returns the configured solver timeout, defaulting to 60s.
+func (s *SettingsStruct) FlareSolverrTimeout() time.Duration {
+	return durationOr(s.FlareSolverr.Timeout, 60*time.Second)
 }
 
 func durationOr(value string, fallback time.Duration) time.Duration {
@@ -248,6 +262,20 @@ func (s *SettingsStruct) validate() error {
 
 	problems = append(problems, s.Transmission.problems("transmission")...)
 	problems = append(problems, s.Torrserver.problems("torrserver")...)
+
+	if value := strings.TrimSpace(s.FlareSolverr.URL); value != "" {
+		u, err := url.Parse(value)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			problems = append(problems, fmt.Sprintf(`"flaresolverr.url" is not an absolute http(s) URL: %q`, value))
+		}
+		if timeout := strings.TrimSpace(s.FlareSolverr.Timeout); timeout != "" {
+			if d, err := time.ParseDuration(timeout); err != nil {
+				problems = append(problems, fmt.Sprintf(`"flaresolverr.timeout" is not a duration: %q`, timeout))
+			} else if d <= 0 {
+				problems = append(problems, fmt.Sprintf(`"flaresolverr.timeout" must be positive, got %q`, timeout))
+			}
+		}
+	}
 
 	if s.Web.Enabled {
 		problems = append(problems, s.Web.problems()...)

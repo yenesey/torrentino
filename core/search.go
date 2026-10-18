@@ -284,8 +284,9 @@ func (s *Service) TorrentFile(ctx context.Context, link string) ([]byte, error) 
 }
 
 // Poster returns the Torrserver poster for a search result. It prefers the
-// Poster field supplied by Jackett and falls back to a tracker-page <img>
-// heuristic; there are no tracker-specific XPath rules to keep in sync.
+// Poster field supplied by Jackett, then scrapes the details page, and finally
+// asks FlareSolverr when the tracker blocks the direct request. There are no
+// tracker-specific XPath rules to keep in sync.
 func (s *Service) Poster(ctx context.Context, item *FindItem) string {
 	if item == nil {
 		return ""
@@ -296,11 +297,33 @@ func (s *Service) Poster(ctx context.Context, item *FindItem) string {
 	if !safeHTTPURL(item.Details) {
 		return ""
 	}
+	if poster := s.posterFromPage(ctx, item.Details); poster != "" {
+		return poster
+	}
+	if s.FlareSolverr == nil {
+		return ""
+	}
 
+	solved, err := s.FlareSolverr.Fetch(ctx, item.Details)
+	if err != nil {
+		utils.LogError(fmt.Errorf("flaresolverr poster failed: %v", err))
+		return ""
+	}
+	doc, err := htmlquery.Parse(strings.NewReader(solved))
+	if err != nil {
+		utils.LogError(err)
+		return ""
+	}
+	return posterFromDoc(doc, item.Details)
+}
+
+// posterFromPage performs the direct, browser-like request and extracts a
+// poster. It returns empty on any failure so Poster can try FlareSolverr.
+func (s *Service) posterFromPage(ctx context.Context, pageURL string) string {
 	ctx, cancel := context.WithTimeout(ctx, posterTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, item.Details, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
 	if err != nil {
 		return ""
 	}
@@ -330,7 +353,7 @@ func (s *Service) Poster(ctx context.Context, item *FindItem) string {
 		utils.LogError(err)
 		return ""
 	}
-	return posterFromDoc(doc, item.Details)
+	return posterFromDoc(doc, pageURL)
 }
 
 func posterFromDoc(doc *html.Node, pageURL string) string {
@@ -372,8 +395,18 @@ func posterScore(img *html.Node, src string) int {
 			break
 		}
 	}
-	if strings.Contains(strings.ToLower(src), "poster") || strings.Contains(strings.ToLower(src), "cover") {
+	lowerSrc := strings.ToLower(src)
+	if strings.Contains(lowerSrc, "poster") || strings.Contains(lowerSrc, "cover") {
 		score += 2
+	}
+	// Kinozal (and similar trackers) serve the cover under /big/...jpg
+	// without a poster/cover word in the URL or attributes.
+	if strings.Contains(lowerSrc, "/big/") || strings.Contains(lowerSrc, "/large/") || strings.Contains(lowerSrc, "/cover") {
+		score += 5
+	}
+	if strings.HasSuffix(lowerSrc, ".jpg") || strings.HasSuffix(lowerSrc, ".jpeg") ||
+		strings.HasSuffix(lowerSrc, ".png") || strings.HasSuffix(lowerSrc, ".webp") {
+		score++
 	}
 	width, _ := strconv.Atoi(imageAttr(img, "width"))
 	height, _ := strconv.Atoi(imageAttr(img, "height"))

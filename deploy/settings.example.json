@@ -21,6 +21,10 @@
         "movie": "/path/to/downloads/movie",
         "series": "/path/to/downloads/series"
     },
+    "flaresolverr": {
+        "url": "http://127.0.0.1:8191/v1",
+        "timeout": "60s"
+    },
     "web": {
         "enabled": false,
         "listen": "127.0.0.1:8088",

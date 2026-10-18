@@ -65,6 +65,15 @@ func (f *fakeTransmission) Pause(ctx context.Context, id int64) error {
 	return nil
 }
 
+type fakeFlareSolverr struct {
+	html string
+	err  error
+}
+
+func (f *fakeFlareSolverr) Fetch(ctx context.Context, target string) (string, error) {
+	return f.html, f.err
+}
+
 type fakeTorrserver struct {
 	items   []torrserver.TSListItem
 	adds    []string
@@ -506,5 +515,23 @@ func TestDoFindMapsTorrserverBadRequest(t *testing.T) {
 	err := service.DoFind(context.Background(), item, "torrsrv")
 	if !errors.Is(err, ErrTorrentUnavailable) {
 		t.Errorf("error = %v, want ErrTorrentUnavailable", err)
+	}
+}
+
+func TestPosterFallsBackToFlareSolverr(t *testing.T) {
+	page := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+	}))
+	defer page.Close()
+	service, _, _, _ := testService()
+	service.FlareSolverr = &fakeFlareSolverr{
+		html: `<html><body>
+			<img class="logo" alt="logo" src="/logo.png">
+			<img class="p200" src="/big/2026/1018/cover.jpg">
+		</body></html>`,
+	}
+	item := &FindItem{Result: jackett.Result{Details: page.URL}}
+	if got, want := service.Poster(context.Background(), item), page.URL+"/big/2026/1018/cover.jpg"; got != want {
+		t.Errorf("poster = %q, want %q", got, want)
 	}
 }

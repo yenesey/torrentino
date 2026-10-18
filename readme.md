@@ -35,6 +35,13 @@ Required fields are `telegram-api-token`, `jackett.api-key` and `host`/`port` of
 three services: if any of them is missing or invalid, the bot prints the list of
 problems and exits instead of starting with broken endpoints.
 
+Optional poster fallback:
+
+- `flaresolverr.url` - full FlareSolverr endpoint, for example
+  `http://127.0.0.1:8191/v1`; when set, a tracker page that rejects the direct
+  request is retried through FlareSolverr before giving up on the poster.
+- `flaresolverr.timeout` - solver timeout as a Go duration, default `60s`.
+
 ### Web interface (optional)
 
 The same binary can serve a browser UI in addition to Telegram. It is disabled by

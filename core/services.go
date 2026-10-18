@@ -5,6 +5,7 @@ import (
 
 	"github.com/hekmon/transmissionrpc/v2"
 
+	"torrentino/api/flaresolverr"
 	"torrentino/api/jackett"
 	"torrentino/api/torrserver"
 	"torrentino/api/transmission"
@@ -33,12 +34,18 @@ type TorrserverAPI interface {
 	Delete(ctx context.Context, hash string) error
 }
 
+// FlareSolverrAPI loads a page through the local FlareSolverr instance.
+type FlareSolverrAPI interface {
+	Fetch(ctx context.Context, target string) (string, error)
+}
+
 // Service is the domain entry point. The zero value is not usable; construct
 // it with NewService or fill the interfaces (tests use fakes).
 type Service struct {
 	Jackett      JackettAPI
 	Transmission TransmissionAPI
 	Torrserver   TorrserverAPI
+	FlareSolverr FlareSolverrAPI
 }
 
 // NewService returns a service backed by the real API clients. The clients
@@ -48,6 +55,7 @@ func NewService() *Service {
 		Jackett:      jackettAdapter{},
 		Transmission: transmissionAdapter{},
 		Torrserver:   torrserverAdapter{},
+		FlareSolverr: flaresolverrAdapter{},
 	}
 }
 
@@ -70,6 +78,12 @@ func (jackettAdapter) Query(ctx context.Context, query string, indexers []string
 
 func (jackettAdapter) GetInfoHash(ctx context.Context, link string) (string, error) {
 	return jackett.GetInfoHashContext(ctx, link)
+}
+
+type flaresolverrAdapter struct{}
+
+func (flaresolverrAdapter) Fetch(ctx context.Context, target string) (string, error) {
+	return flaresolverr.Fetch(ctx, target)
 }
 
 type transmissionAdapter struct{}
