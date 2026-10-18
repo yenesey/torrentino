@@ -56,8 +56,8 @@
       {{range .Screen.Rows}}
       <li class="row{{if .Selected}} selected{{end}}">
         <button class="select" type="submit" name="cmd" value="select:{{.Index}}" aria-label="Select item {{.Number}}">
-          <span class="num">{{.Number}}.</span>
           <span class="titleline">
+            <span class="num">{{.Number}}.</span>
             {{if eq $.Screen.Kind "find"}}
               <span class="title">{{.Title}}</span>
             {{else if eq $.Screen.Kind "downloads"}}

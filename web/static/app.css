@@ -87,6 +87,7 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .row .num { color: var(--muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
 .titleline { display: block; min-width: 0; flex: 1 1 0; }
 .titleline .title { overflow-wrap: anywhere; word-break: break-word; }
+.titleline .num { margin-right: .25rem; }
 .titleline .icon, .titleline .badge { margin-right: .3rem; }
 .row .title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .row .meta { color: var(--muted); font-size: .9rem; white-space: nowrap; min-width: 0; overflow-wrap: anywhere; }
