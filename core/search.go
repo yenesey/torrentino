@@ -130,8 +130,8 @@ func (s *Service) FindActions(item *FindItem) []Action {
 	if !item.InTorrents {
 		result = append(result,
 			Action{ID: "download", Label: "download"},
-			Action{ID: "download:series", Label: "download:series"},
-			Action{ID: "download:movie", Label: "download:movie"},
+			Action{ID: "dwnld:series", Label: "dwnld:series"},
+			Action{ID: "dwnld:movie", Label: "dwnld:movie"},
 		)
 	}
 	if !item.InTorrserver {
@@ -175,15 +175,15 @@ func (s *Service) DoFind(ctx context.Context, item *FindItem, action string) err
 	}
 
 	switch action {
-	case "download", "download:series", "download:movie":
+	case "download", "dwnld:series", "dwnld:movie":
 		if link == "" {
 			return fmt.Errorf("%w: result has neither a link nor a magnet", ErrNotAvailable)
 		}
 		dir := common.Settings.Path.Default
 		switch action {
-		case "download:series":
+		case "dwnld:series":
 			dir = common.Settings.Path.Series
-		case "download:movie":
+		case "dwnld:movie":
 			dir = common.Settings.Path.Movie
 		}
 		if err := s.Transmission.Add(ctx, link, dir); err != nil {

@@ -340,7 +340,7 @@ func successMessage(action, name string) string {
 	switch action {
 	case "delete":
 		return fmt.Sprintf("Deleted “%s”.", name)
-	case "download", "download:series", "download:movie":
+	case "download", "dwnld:series", "dwnld:movie":
 		return "Added to Transmission."
 	case "torrsrv":
 		return "Added to Torrserver."

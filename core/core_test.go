@@ -161,7 +161,7 @@ func TestFindActions(t *testing.T) {
 	service, _, _, _ := testService()
 	item := &FindItem{Result: jackett.Result{Link: "http://x/a", Details: "http://x/details"}}
 	ids := ActionIDs(service.FindActions(item))
-	if strings.Join(ids, ",") != "download,download:series,download:movie,torrsrv,.torrent,web page" {
+	if strings.Join(ids, ",") != "download,dwnld:series,dwnld:movie,torrsrv,.torrent,web page" {
 		t.Errorf("actions = %v", ids)
 	}
 
@@ -188,8 +188,8 @@ func TestDoFindDownloadsToConfiguredDirectory(t *testing.T) {
 		want   string
 	}{
 		{"download", "/default"},
-		{"download:movie", "/movie"},
-		{"download:series", "/series"},
+		{"dwnld:movie", "/movie"},
+		{"dwnld:series", "/series"},
 	} {
 		service, _, tr, _ := testService()
 		item := &FindItem{Result: jackett.Result{Link: "http://x/a"}}

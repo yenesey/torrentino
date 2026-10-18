@@ -401,7 +401,7 @@ func TestFindSearchCommandsAndActions(t *testing.T) {
 	if selectRes.status != http.StatusOK || !strings.Contains(selectRes.body, `class="row selected"`) {
 		t.Fatalf("select = %d, body=%s", selectRes.status, selectRes.body)
 	}
-	if !strings.Contains(selectRes.body, "download:movie") || !strings.Contains(selectRes.body, ".torrent") {
+	if !strings.Contains(selectRes.body, "dwnld:movie") || !strings.Contains(selectRes.body, ".torrent") {
 		t.Errorf("action panel is missing expected actions: %s", selectRes.body)
 	}
 
