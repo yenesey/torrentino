@@ -276,7 +276,12 @@ func (s *Server) commandAction(w http.ResponseWriter, r *http.Request, session *
 	generation := screen.gen
 	screen.mu.Unlock()
 
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	timeout := 20 * time.Second
+	if screen.Kind == KindFind && action == "torrsrv" {
+		// Allow the optional poster fallback to finish before Torrserver add.
+		timeout = 90 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 
 	var err error

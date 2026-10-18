@@ -191,7 +191,13 @@ func (s *Service) DoFind(ctx context.Context, item *FindItem, action string) err
 	if item == nil {
 		return ErrStaleItem
 	}
-	ctx, cancel := context.WithTimeout(ctx, findTimeout)
+	timeout := findTimeout
+	if action == "torrsrv" && strings.TrimSpace(common.Settings.FlareSolverr.URL) != "" {
+		// The direct poster page has its own timeout, then FlareSolverr may
+		// spend up to flaresolverr.timeout solving a challenge.
+		timeout = posterTimeout + common.Settings.FlareSolverrTimeout() + 5*time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	link := item.Link
 	if link == "" {
