@@ -80,10 +80,10 @@ main { width: 100%; max-width: 72rem; margin: 0 auto; padding: 1rem; }
 button.primary { background: var(--accent); color: #fff; border: 0; border-radius: .5rem; padding: .55rem .9rem; min-height: 44px; }
 button.primary:disabled { opacity: .6; cursor: progress; }
 .list { list-style: none; margin: 0; padding: 0; }
-.row { display: flex; gap: .6rem; align-items: baseline; padding: .6rem .35rem; border-bottom: 1px solid var(--line); flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.row { display: flex; gap: .6rem; align-items: baseline; padding: 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; min-width: 0; max-width: 100%; cursor: pointer; }
 .row:last-child { border-bottom: 0; }
 .row.selected { background: var(--accent-soft); border-radius: .5rem; }
-.row button.select { background: none; border: 0; color: inherit; text-align: left; padding: 0; min-width: 0; max-width: 100%; flex: 1 1 auto; display: flex; gap: .45rem; align-items: baseline; flex-wrap: wrap; min-height: 28px; }
+.row button.select { width: 100%; background: none; border: 0; color: inherit; text-align: left; padding: .6rem .35rem; min-width: 0; max-width: 100%; flex: 1 1 auto; display: flex; gap: .45rem; align-items: baseline; flex-wrap: wrap; min-height: 28px; }
 .row .num { color: var(--muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
 .titleline { display: block; min-width: 0; flex: 1 1 0; }
 .titleline .title { overflow-wrap: anywhere; word-break: break-word; }
