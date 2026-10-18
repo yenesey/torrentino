@@ -1,14 +1,13 @@
 module torrentino
 
-go 1.24
+go 1.27.0
 
-toolchain go1.24.0
-
-require github.com/go-telegram/bot v1.10.1
+toolchain go1.27.2
 
 require (
 	github.com/antchfx/htmlquery v1.3.3
 	github.com/gensword/collections v0.0.0-20200421004815-62ce27e4f5bd
+	github.com/go-telegram/bot v1.10.1
 	github.com/hekmon/transmissionrpc/v2 v2.0.1
 	github.com/j-muller/go-torrent-parser v0.0.0-20211014072822-db02b4099054
 	github.com/pkg/errors v0.9.1

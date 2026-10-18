@@ -14,7 +14,7 @@
 - **Transmission** — торрент-клиент: добавление, пауза/старт, удаление, список.
 - **Torrserver** — стриминг видео без полной загрузки (add/list/rem).
 
-Репозиторий: `github.com/yenesey/torrentino`. Модуль: `torrentino`. Go 1.24 (`toolchain go1.24.0`).
+Репозиторий: `github.com/yenesey/torrentino`. Модуль: `torrentino`. Go 1.27 (`toolchain go1.27.2`).
 Объём — несколько тысяч строк Go (Telegram-часть, общий слой `core`/`common/list`,
 веб-интерфейс `web`).
 
