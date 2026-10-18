@@ -401,7 +401,7 @@ func TestFindSearchCommandsAndActions(t *testing.T) {
 	if selectRes.status != http.StatusOK || !strings.Contains(selectRes.body, `class="row selected"`) {
 		t.Fatalf("select = %d, body=%s", selectRes.status, selectRes.body)
 	}
-	if !strings.Contains(selectRes.body, "dwnld:movie") || !strings.Contains(selectRes.body, ".torrent") {
+	if !strings.Contains(selectRes.body, "&gt;movie") || !strings.Contains(selectRes.body, ".torrent") {
 		t.Errorf("action panel is missing expected actions: %s", selectRes.body)
 	}
 
@@ -428,7 +428,7 @@ func TestFindSearchCommandsAndActions(t *testing.T) {
 	if selectRes.status != http.StatusOK {
 		t.Fatalf("select after filter = %d", selectRes.status)
 	}
-	action := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"action:download"}}, csrf, true)
+	action := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"action:->default"}}, csrf, true)
 	if action.status != http.StatusOK {
 		t.Fatalf("download = %d, body=%s", action.status, action.body)
 	}

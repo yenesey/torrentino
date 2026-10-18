@@ -14,8 +14,8 @@ func TestParseCommand(t *testing.T) {
 		"filter:TrackerId/rutor": {verb: "filter", attribute: "TrackerId", value: "rutor"},
 		"filter:TrackerId/sub/g": {verb: "filter", attribute: "TrackerId", value: "sub/g"},
 		"filter:clear":           {verb: "filter-clear"},
-		"action:download":        {verb: "action", action: "download"},
-		"action:dwnld:movie":     {verb: "action", action: "dwnld:movie"},
+		"action:->default":       {verb: "action", action: "->default"},
+		"action:->movie":         {verb: "action", action: "->movie"},
 	}
 	for input, want := range valid {
 		got, err := parseCommand(input)
