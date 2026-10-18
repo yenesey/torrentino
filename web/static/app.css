@@ -69,7 +69,7 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .titleline .icon, .titleline .badge { margin-right: .3rem; }
 .row .title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .row .meta { color: var(--muted); font-size: .9rem; white-space: nowrap; min-width: 0; overflow-wrap: anywhere; }
-.meta-line { display: flex; align-items: baseline; justify-content: flex-end; gap: .4rem; flex-wrap: wrap; min-width: 0; flex: 1 1 100%; }
+.meta-line { display: flex; align-items: baseline; justify-content: flex-end; gap: .4rem; flex-wrap: wrap; min-width: 0; flex: 0 0 auto; margin-left: auto; }
 .meta-line .meta { flex: 0 1 auto; }
 .meta-line .badge { flex: 0 0 auto; }
 .screen-head h1, .screen-head h2, .banner, .footer-note { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
