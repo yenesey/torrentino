@@ -432,21 +432,37 @@ func TestTorrserver(t *testing.T) {
 	}
 }
 
-func TestPosterScrapingValidatesScheme(t *testing.T) {
+func TestPosterPrefersJackettResult(t *testing.T) {
+	service, _, _, _ := testService()
+	item := &FindItem{Result: jackett.Result{
+		Poster:  "http://tracker/poster.jpg",
+		Details: "http://127.0.0.1:1/unreachable",
+	}}
+	if got := service.Poster(context.Background(), item); got != "http://tracker/poster.jpg" {
+		t.Errorf("poster = %q", got)
+	}
+}
+
+func TestPosterFallsBackToImgHeuristic(t *testing.T) {
 	page := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`<var class="postImg postImgAligned img-right" title="http://tracker/poster.jpg"></var>`))
+		_, _ = w.Write([]byte(`<html><body>
+			<img class="logo" src="/logo.png" width="500" height="500">
+			<img class="poster" alt="Poster" src="/poster.jpg">
+		</body></html>`))
 	}))
 	defer page.Close()
 	service, _, _, _ := testService()
-	if got := service.Poster(context.Background(), page.URL, "rutracker"); got != "http://tracker/poster.jpg" {
-		t.Errorf("poster = %q", got)
+	item := &FindItem{Result: jackett.Result{Details: page.URL}}
+	if got, want := service.Poster(context.Background(), item), page.URL+"/poster.jpg"; got != want {
+		t.Errorf("poster = %q, want %q", got, want)
 	}
 
 	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`<var class="postImg postImgAligned img-right" title="javascript:alert(1)"></var>`))
+		_, _ = w.Write([]byte(`<img class="poster" src="javascript:alert(1)">`))
 	}))
 	defer bad.Close()
-	if got := service.Poster(context.Background(), bad.URL, "rutracker"); got != "" {
+	item = &FindItem{Result: jackett.Result{Details: bad.URL}}
+	if got := service.Poster(context.Background(), item); got != "" {
 		t.Errorf("javascript poster = %q, want empty", got)
 	}
 }

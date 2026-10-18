@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -217,7 +218,7 @@ func (s *Service) DoFind(ctx context.Context, item *FindItem, action string) err
 		if link == "" {
 			return fmt.Errorf("%w: result has neither a link nor a magnet", ErrNotAvailable)
 		}
-		poster := s.Poster(ctx, item.Details, item.TrackerId)
+		poster := s.Poster(ctx, item)
 		if err := s.Torrserver.Add(ctx, link, item.Title, poster); err != nil {
 			return Upstream(err)
 		}
@@ -278,18 +279,24 @@ func (s *Service) TorrentFile(ctx context.Context, link string) ([]byte, error) 
 	return data, nil
 }
 
-// Poster scrapes the poster URL from a tracker page for Torrserver. Scraping
-// is best-effort: any failure returns an empty string and never blocks adding
-// the torrent.
-func (s *Service) Poster(ctx context.Context, pageURL string, tracker string) string {
-	if !safeHTTPURL(pageURL) {
+// Poster returns the Torrserver poster for a search result. It prefers the
+// Poster field supplied by Jackett and falls back to a tracker-page <img>
+// heuristic; there are no tracker-specific XPath rules to keep in sync.
+func (s *Service) Poster(ctx context.Context, item *FindItem) string {
+	if item == nil {
+		return ""
+	}
+	if poster := resolvePosterURL(item.Details, item.Poster); poster != "" {
+		return poster
+	}
+	if !safeHTTPURL(item.Details) {
 		return ""
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, posterTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, item.Details, nil)
 	if err != nil {
 		return ""
 	}
@@ -314,41 +321,101 @@ func (s *Service) Poster(ctx context.Context, pageURL string, tracker string) st
 		utils.LogError(err)
 		return ""
 	}
-	poster := posterFromDoc(doc, tracker)
-	if !safeHTTPURL(poster) {
-		return ""
-	}
-	return poster
+	return posterFromDoc(doc, item.Details)
 }
 
-func posterFromDoc(doc *html.Node, tracker string) string {
-	findKey := func(attr []html.Attribute, key string) string {
-		for i := range attr {
-			if attr[i].Key == key {
-				return attr[i].Val
-			}
+func posterFromDoc(doc *html.Node, pageURL string) string {
+	best := ""
+	bestScore := 0
+	for _, img := range htmlquery.Find(doc, "//img") {
+		raw := firstImageAttr(img, "src", "data-src", "data-original", "data-lazy-src", "data-url")
+		src := resolvePosterURL(pageURL, raw)
+		if src == "" {
+			continue
 		}
-		return ""
+		score := posterScore(img, src)
+		if score > bestScore {
+			best = src
+			bestScore = score
+		}
+	}
+	return best
+}
+
+func posterScore(img *html.Node, src string) int {
+	text := strings.ToLower(strings.Join([]string{
+		imageAttr(img, "alt"),
+		imageAttr(img, "class"),
+		imageAttr(img, "id"),
+		imageAttr(img, "title"),
+		src,
+	}, " "))
+	for _, bad := range []string{"logo", "avatar", "icon", "smiley", "spacer", "emoji", "badge"} {
+		if strings.Contains(text, bad) {
+			return 0
+		}
 	}
 
-	switch tracker {
-	case "rutor":
-		poster := htmlquery.Find(doc, "//*[@id=\"details\"]/*/tr[1]/td[2]/img")
-		if len(poster) > 0 {
-			return findKey(poster[0].Attr, "src")
+	score := 0
+	for _, hint := range []string{"poster", "cover", "постер", "обложка"} {
+		if strings.Contains(text, hint) {
+			score += 10
+			break
 		}
-	case "rutracker":
-		poster := htmlquery.Find(doc, "//var[@class=\"postImg postImgAligned img-right\"]")
-		if len(poster) > 0 {
-			return findKey(poster[0].Attr, "title")
-		}
-	case "kinozal":
-		poster := htmlquery.Find(doc, "//*[@id=\"main\"]/div[2]/div[1]/div[2]/ul/li[1]/a/img")
-		if len(poster) > 0 {
-			return findKey(poster[0].Attr, "src")
+	}
+	if strings.Contains(strings.ToLower(src), "poster") || strings.Contains(strings.ToLower(src), "cover") {
+		score += 2
+	}
+	width, _ := strconv.Atoi(imageAttr(img, "width"))
+	height, _ := strconv.Atoi(imageAttr(img, "height"))
+	if width >= 300 && height >= 300 {
+		score += 3
+	}
+	if height > width && height > 0 {
+		score++
+	}
+	return score
+}
+
+func firstImageAttr(img *html.Node, keys ...string) string {
+	for _, key := range keys {
+		if value := imageAttr(img, key); value != "" {
+			return value
 		}
 	}
 	return ""
+}
+
+func imageAttr(img *html.Node, key string) string {
+	for i := range img.Attr {
+		if strings.EqualFold(img.Attr[i].Key, key) {
+			return strings.TrimSpace(img.Attr[i].Val)
+		}
+	}
+	return ""
+}
+
+func resolvePosterURL(base, raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	ref, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	if !ref.IsAbs() && base != "" {
+		baseURL, err := url.Parse(base)
+		if err != nil {
+			return ""
+		}
+		ref = baseURL.ResolveReference(ref)
+	}
+	resolved := ref.String()
+	if !safeHTTPURL(resolved) {
+		return ""
+	}
+	return resolved
 }
 
 // requestErrorDetail strips the URL from net/http errors. Torrent and poster
