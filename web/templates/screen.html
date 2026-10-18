@@ -27,22 +27,25 @@
     {{if .Screen.Controls}}
     <div class="controls">
       {{if .Screen.Sortings}}
-      <h3>Sort</h3>
-      <div class="chips">
-        {{range .Screen.Sortings}}
-        <button type="submit" name="cmd" value="{{.Cmd}}" class="{{if .Active}}enabled{{end}}">{{.Alias}}{{if .Arrow}} <span aria-hidden="true">{{.Arrow}}</span>{{end}}{{if .Active}}<sup>{{.Queue}}</sup>{{end}}</button>
-        {{end}}
+      <div class="control-row">
+        <h3>Sort</h3>
+        <div class="chips">
+          {{range .Screen.Sortings}}
+          <button type="submit" name="cmd" value="{{.Cmd}}" class="{{if .Active}}enabled{{end}}">{{.Alias}}{{if .Arrow}} <span aria-hidden="true">{{.Arrow}}</span>{{end}}{{if .Active}}<sup>{{.Queue}}</sup>{{end}}</button>
+          {{end}}
+        </div>
       </div>
       {{end}}
       {{range .Screen.Filters}}
-      <h3>Filter: {{.Attribute}}</h3>
-      <div class="chips">
-        {{range .Values}}
-        <button type="submit" name="cmd" value="{{.Cmd}}" class="{{if .Enabled}}enabled{{end}}">{{.Label}}</button>
-        {{end}}
+      <div class="control-row">
+        <h3>Filter: {{.Attribute}}</h3>
+        <div class="chips">
+          {{range .Values}}
+          <button type="submit" name="cmd" value="{{.Cmd}}" class="{{if .Enabled}}enabled{{end}}">{{.Label}}</button>
+          {{end}}
+        </div>
       </div>
       {{end}}
-      {{if .Screen.Filters}}<p><button type="submit" name="cmd" value="filter:clear">Clear filters</button></p>{{end}}
     </div>
     {{end}}
 

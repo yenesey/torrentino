@@ -79,10 +79,13 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .pager { display: flex; gap: .75rem; align-items: center; justify-content: center; margin: 0 0 .35rem; flex-wrap: wrap; }
 .pager button, .panel button, .actions button, .linklike { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: .5rem; padding: .5rem .75rem; min-height: 44px; }
 .pager button:disabled { opacity: .45; cursor: default; }
-.controls { margin: .75rem 0; padding: .75rem; border: 1px dashed var(--line); border-radius: .5rem; }
-.controls h3 { margin: .25rem 0 .5rem; font-size: .95rem; }
-.chips { display: flex; flex-wrap: wrap; gap: .4rem; }
-.chips button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 999px; padding: .35rem .7rem; min-height: 36px; }
+.controls { margin: .75rem 0; padding: .6rem .75rem; border: 1px dashed var(--line); border-radius: .5rem; }
+.control-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin: .35rem 0; }
+.control-row:first-child { margin-top: 0; }
+.control-row:last-child { margin-bottom: 0; }
+.control-row h3 { margin: 0; font-size: .9rem; flex: 0 0 auto; }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; min-width: 0; }
+.chips button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 999px; padding: .3rem .55rem; line-height: 1.2; min-height: 33px; }
 .chips button.enabled { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .actions { margin: 0 0 .5rem; padding: 0 0 .5rem; border-bottom: 1px solid var(--line); }
 .actions button, .actions .linklike { min-height: 33px; padding: .3rem .5rem; line-height: 1.2; }
