@@ -14,33 +14,9 @@ Integrates with:
 \> go build
 ```
 
-- create and fill settings.json by example:
-```json
-{
-    "jackett" : {
-        "host" : "host_name_or_ip",
-        "port" : 9117,
-        "api-key" : "***",
-        "indexers" : ["rutor", "rutracker", "kinozal"],
-        "timeout" : "60s"
-    },
-    "transmission" : {
-        "host" : "host_name_or_ip",
-        "port" : 9091
-    },
-    "torrserver" : {
-        "host" : "host_name_or_ip",
-        "port" : 8090
-    },
-    "telegram-api-token" : "***",
-    "users-list" : [],
-    "path" : {
-        "default" : "/mnt/big/download/default",
-        "movie" : "/mnt/big/download/movie",
-        "series" : "/mnt/big/download/series"
-    }
-}
-```
+- copy [`settings.example.json`](settings.example.json) to `settings.json` and replace
+  every `REPLACE_WITH_...` placeholder; the example contains no real keys, tokens or
+  passwords. The file also includes an optional `web` block (disabled by default).
 
 Where:
  - `telegram-api-token` - bot token, obtain your own via [@BotFather](https://t.me/BotFather)
@@ -63,25 +39,9 @@ problems and exits instead of starting with broken endpoints.
 
 The same binary can serve a browser UI in addition to Telegram. It is disabled by
 default: without a `web` block the bot behaves exactly as before. Enable it in
-`settings.json`:
-
-```json
-"web": {
-    "enabled": true,
-    "listen": "127.0.0.1:8088",
-    "base-path": "/",
-    "page-size": 20,
-    "session": {
-        "idle-timeout": "12h",
-        "max-age": "168h"
-    },
-    "secure-cookies": true,
-    "trusted-proxies": ["127.0.0.1/32"],
-    "users": [
-        { "name": "denis", "password-hash": "pbkdf2-sha256$600000$<base64-salt>$<base64-key>" }
-    ]
-}
-```
+`settings.json` by copying the `web` block from
+[`settings.example.json`](settings.example.json), setting `"enabled": true`, and
+generating a password hash below.
 
 The web UI needs its own accounts; Telegram `users-list` is not reused, so login
 works even when Telegram is unavailable. Generate a hash for every account with:
@@ -125,8 +85,7 @@ docs use **https://torrentino.example.com/** as a placeholder. The app listens o
 `127.0.0.1:8088` with `web.base-path: "/"`. The nginx site template is in
 [`deploy/nginx/torrentino.conf`](deploy/nginx/torrentino.conf); the
 old `https://example.com/torrentino/` path is redirected to the subdomain.
-See `spec/add-web-interface/08-deployment-and-ops.md` for the full operations guide
-and `spec/add-web-interface/06-auth-and-security.md` for the security model.
+See [`deploy/nginx/`](deploy/nginx/) for the nginx deployment files.
 
 ### Run
  - append your telegram user id to "users-list" and start bot

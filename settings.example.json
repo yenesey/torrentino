@@ -1,0 +1,46 @@
+{
+    "jackett": {
+        "host": "127.0.0.1",
+        "port": 9117,
+        "api-key": "REPLACE_WITH_JACKETT_API_KEY",
+        "indexers": ["rutor", "rutracker", "kinozal"],
+        "timeout": "60s"
+    },
+    "transmission": {
+        "host": "127.0.0.1",
+        "port": 9091
+    },
+    "torrserver": {
+        "host": "127.0.0.1",
+        "port": 8090
+    },
+    "telegram-api-token": "000000000:REPLACE_WITH_BOTFATHER_TOKEN",
+    "users-list": [123456789],
+    "path": {
+        "default": "/path/to/downloads/default",
+        "movie": "/path/to/downloads/movie",
+        "series": "/path/to/downloads/series"
+    },
+    "web": {
+        "enabled": false,
+        "listen": "127.0.0.1:8088",
+        "base-path": "/",
+        "page-size": 20,
+        "session": {
+            "idle-timeout": "12h",
+            "max-age": "168h"
+        },
+        "secure-cookies": true,
+        "trusted-proxies": ["127.0.0.1/32"],
+        "tls": {
+            "cert": "",
+            "key": ""
+        },
+        "users": [
+            {
+                "name": "admin",
+                "password-hash": "pbkdf2-sha256$600000$REPLACE_WITH_BASE64_SALT$REPLACE_WITH_BASE64_KEY"
+            }
+        ]
+    }
+}
