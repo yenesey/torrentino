@@ -122,8 +122,8 @@ logs the error and keeps serving the web UI.
 
 This deployment is intended to run behind nginx at a private subdomain; the
 docs use **https://torrentino.example.com/** as a placeholder. The app listens on
-`127.0.0.1:8088` with `web.base-path: "/"`. The nginx site and the
-certificate/renewal commands are in [`deploy/nginx/`](deploy/nginx/README.md); the
+`127.0.0.1:8088` with `web.base-path: "/"`. The nginx site template is in
+[`deploy/nginx/torrentino.conf`](deploy/nginx/torrentino.conf); the
 old `https://example.com/torrentino/` path is redirected to the subdomain.
 See `spec/add-web-interface/08-deployment-and-ops.md` for the full operations guide
 and `spec/add-web-interface/06-auth-and-security.md` for the security model.
