@@ -13,6 +13,42 @@
     });
   }
 
+
+  var themeButton = document.getElementById('theme-toggle');
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+  function syncThemeButton(theme) {
+    if (!themeButton) { return; }
+    themeButton.hidden = false;
+    themeButton.textContent = theme === 'dark' ? '☀' : '☾';
+    var label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+    themeButton.setAttribute('aria-label', label);
+    themeButton.setAttribute('title', label);
+    themeButton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+  }
+  if (themeButton) {
+    syncThemeButton(currentTheme());
+    themeButton.addEventListener('click', function () {
+      var next = currentTheme() === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('torrentino-theme', next); } catch (err) {}
+      syncThemeButton(next);
+    });
+    if (window.matchMedia) {
+      var themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+      var onSystemThemeChange = function () {
+        var saved = null;
+        try { saved = localStorage.getItem('torrentino-theme'); } catch (err) {}
+        if (saved === 'light' || saved === 'dark') { return; }
+        var next = themeMedia.matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', next);
+        syncThemeButton(next);
+      };
+      if (themeMedia.addEventListener) { themeMedia.addEventListener('change', onSystemThemeChange); }
+    }
+  }
+
   var scrollBeforeSwap = null;
 
   function focusNoScroll(element, setTabIndex) {

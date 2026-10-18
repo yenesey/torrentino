@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{.CSRF}}">
   <title>Torrentino · {{.Screen.Title}}</title>
+  <script src="{{.Base}}/static/theme.js?v={{.StaticVersion}}"></script>
   <link rel="stylesheet" href="{{.Base}}/static/app.css?v={{.StaticVersion}}">
 </head>
 <body>
@@ -13,12 +14,15 @@
     <nav>
       {{range .Nav}}<a href="{{.URL}}"{{if .Active}} class="active" aria-current="page"{{end}}>{{.Label}}</a>{{end}}
     </nav>
-    <div class="userbox">
-      <span class="username">{{.User}}</span>
-      <form method="post" action="{{.Base}}/logout">
-        <input type="hidden" name="csrf" value="{{.CSRF}}">
-        <button type="submit" class="linklike">Log out</button>
-      </form>
+    <div class="topbar-right">
+      <div class="userbox">
+        <span class="username">{{.User}}</span>
+        <form method="post" action="{{.Base}}/logout">
+          <input type="hidden" name="csrf" value="{{.CSRF}}">
+          <button type="submit" class="linklike">Log out</button>
+        </form>
+      </div>
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle color theme" title="Toggle color theme" hidden>☾</button>
     </div>
   </header>
   {{template "screen" .}}
