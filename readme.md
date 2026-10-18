@@ -1,4 +1,4 @@
-# Go-приложение для управления «домашней» экосистемой загрузок на NAS.
+# Go app for managing the “home” download ecosystem on a NAS.
 
 Integrates with:
 - [Transmission](https://github.com/transmission/transmission) - for downloads
