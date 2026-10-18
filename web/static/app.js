@@ -50,6 +50,13 @@
   }
 
   var scrollBeforeSwap = null;
+  var pendingScrollRestore = null;
+
+  function restoreScroll(y) {
+    window.scrollTo(0, y);
+    window.requestAnimationFrame(function () { window.scrollTo(0, y); });
+    window.setTimeout(function () { window.scrollTo(0, y); }, 50);
+  }
 
   function focusNoScroll(element, setTabIndex) {
     if (!element) { return; }
@@ -69,10 +76,11 @@
     // Search replaces the list with a new query, so starting at the top is
     // expected. For commands and polling keep the user's scroll position.
     if (path && path.indexOf('/find/search') !== -1) {
+      pendingScrollRestore = null;
       window.scrollTo(0, 0);
     } else if (savedScroll !== null) {
-      window.scrollTo(0, savedScroll);
-      window.requestAnimationFrame(function () { window.scrollTo(0, savedScroll); });
+      pendingScrollRestore = savedScroll;
+      restoreScroll(savedScroll);
     }
 
     // Polling replaces the screen every five seconds; moving focus there would
@@ -98,6 +106,21 @@
   }
 
   document.addEventListener('htmx:afterSwap', focusAfterSwap);
+  // Restore once more after htmx/focus has settled; this also covers Find's
+  // search field and Torrserver rows, which used to scroll the page to the top.
+  document.addEventListener('htmx:afterSettle', function () {
+    if (pendingScrollRestore !== null) {
+      restoreScroll(pendingScrollRestore);
+      pendingScrollRestore = null;
+    }
+  });
+
+  // Keep the search field convenient on initial load, but never via autofocus:
+  // autofocus fires again on every htmx screen swap and scrolls to the top.
+  var initialSearch = document.querySelector('#screen[data-kind="find"] .search-form input[type="search"]');
+  if (initialSearch) {
+    focusNoScroll(initialSearch, false);
+  }
 
   // A stale selection is a normal answer (the list changed); render its
   // fragment instead of leaving the old screen in place.

@@ -396,6 +396,9 @@ func TestFindSearchCommandsAndActions(t *testing.T) {
 	if !strings.Contains(search.body, `class="meta-line"`) || !strings.Contains(search.body, `class="markers"`) {
 		t.Errorf("find row status line is missing: %s", search.body)
 	}
+	if strings.Contains(search.body, "autofocus") {
+		t.Error("search input must not use autofocus; htmx swaps would scroll to the top")
+	}
 
 	selectRes := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"select:0"}}, csrf, true)
 	if selectRes.status != http.StatusOK || !strings.Contains(selectRes.body, `class="row selected"`) {

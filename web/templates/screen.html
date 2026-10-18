@@ -5,7 +5,7 @@
         hx-push-url="{{.Base}}/find" hx-disabled-elt="button">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <input type="search" name="q" value="{{.Screen.Query}}" maxlength="256"
-           placeholder="Search torrents…" aria-label="Search torrents" required autofocus>
+           placeholder="Search torrents…" aria-label="Search torrents" required>
     <button class="primary" type="submit" {{if .Screen.Searching}}disabled{{end}}>{{if .Screen.Searching}}Searching…{{else}}Search{{end}}</button>
     <span class="htmx-indicator searching" aria-live="polite">Searching…</span>
   </form>
