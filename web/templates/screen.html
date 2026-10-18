@@ -62,9 +62,18 @@
       {{range .Screen.Rows}}
       <li class="row{{if .Selected}} selected{{end}}">
         <button class="select" type="submit" name="cmd" value="select:{{.Index}}" aria-label="Select item {{.Number}}">
-          <span class="num">{{.Number}}.</span>
+          <span class="titleline">
+            <span class="num">{{.Number}}.</span>
+            {{if eq $.Screen.Kind "find"}}
+              <span class="title">{{.Title}}</span>
+            {{else if eq $.Screen.Kind "downloads"}}
+              {{if .IsDir}}<span class="badge">📁 {{.ExtCount}}x {{.Ext}}</span>{{else}}<span class="icon" aria-hidden="true">{{.Icon}}</span>{{end}}
+              <span class="title">{{.Name}}</span>
+            {{else}}
+              <span class="title">{{.Title}}</span>
+            {{end}}
+          </span>
           {{if eq $.Screen.Kind "find"}}
-            <span class="title">{{.Title}}</span>
             <span class="meta">[{{.Size}}] [{{.Tracker}}] [{{.Seeds}}s/{{.Peers}}p]</span>
             <span class="markers">
               {{if .HasLink}}<span title=".torrent file available" aria-label=".torrent file available">📎</span>{{end}}
@@ -73,12 +82,9 @@
               {{if .InTorrserver}}<span title="in Torrserver" aria-label="in Torrserver">🎦</span>{{end}}
             </span>
           {{else if eq $.Screen.Kind "downloads"}}
-            {{if .IsDir}}<span class="badge">📁 {{.ExtCount}}x {{.Ext}}</span>{{else}}<span aria-hidden="true">{{.Icon}}</span>{{end}}
-            <span class="title">{{.Name}}</span>
             <span class="meta">[{{.Size}}] [{{.Percent}}] [{{.Ratio}}]</span>
             {{if .OnDisk}}<span class="badge on-disk">on disk</span>{{else}}<span class="badge status-{{.Status}}">{{.Status}}</span>{{end}}
           {{else}}
-            <span class="title">{{.Title}}</span>
             <span class="meta">[{{.TorrentSize}}]</span>
           {{end}}
         </button>
