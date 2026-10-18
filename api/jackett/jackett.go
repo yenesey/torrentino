@@ -2,6 +2,7 @@ package jackett
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 
 	"torrentino/common"
-	"torrentino/common/utils"
 )
 
 type jackettTime struct {
@@ -97,33 +97,44 @@ type QueryResults struct {
 	Indexers []Indexer
 }
 
-var apiKey string
-var baseUrl string
 var client *http.Client
 
-func httpGet(url string, timeout time.Duration) (*[]byte, error) {
-	var res *http.Response
-	err := utils.WithTimeout(
-		func() error {
-			req, err := http.NewRequest("GET", url, nil)
-			if err != nil {
-				return err
-			}
-			res, err = client.Do(req)
-			if err != nil {
-				return err
-			}
-			if res != nil && res.StatusCode != 200 {
-				return fmt.Errorf("Request error: %s", res.Status)
-			}
-			return err
-		},
-		timeout,
-	)
+// baseUrl and apiKey are resolved on every call rather than captured during
+// package initialization: the config is loaded from main(), so values read in
+// init() would be empty.
+func baseUrl() string {
+	return "http://" + common.Settings.Jackett.Host + ":" +
+		strconv.Itoa(common.Settings.Jackett.Port) + "/api/v2.0/"
+}
+
+func apiKey() string {
+	return common.Settings.Jackett.APIKey
+}
+
+// httpGet performs one GET request with a context deadline. The context is
+// derived from the caller's context, so cancelling the HTTP request from the
+// web (or the bot shutting down) also cancels the upstream call. The body is
+// always closed, and the deadline is applied to the request itself rather than
+// to a goroutine that would keep it running in the background.
+func httpGet(ctx context.Context, url string, timeout time.Duration) (*[]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	res, err := client.Do(req)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("request timeout: %v", requestErrorDetail(err))
+		}
+		return nil, fmt.Errorf("request failed: %v", requestErrorDetail(err))
+	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Request error: %s", res.Status)
+	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
@@ -131,9 +142,19 @@ func httpGet(url string, timeout time.Duration) (*[]byte, error) {
 	return &data, nil
 }
 
-func GetValidIndexers() (*[]Indexer, error) {
+// requestErrorDetail removes the URL from net/http errors: the Jackett URL
+// contains the API key, and those errors are logged.
+func requestErrorDetail(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.Err != nil {
+		return urlErr.Err
+	}
+	return err
+}
+
+func GetValidIndexersContext(ctx context.Context) (*[]Indexer, error) {
 	var r []Indexer
-	data, err := httpGet("indexers?Configured=true", 30*time.Second)
+	data, err := httpGet(ctx, baseUrl()+"indexers?Configured=true", common.Settings.JackettTimeout())
 	if err != nil {
 		return nil, errors.Wrap(err, "GetValidIndexers")
 	}
@@ -144,8 +165,12 @@ func GetValidIndexers() (*[]Indexer, error) {
 	return &r, nil
 }
 
-func GetInfoHash(url string) (string, error) {
-	res, err := httpGet(url, 5*time.Second)
+func GetValidIndexers() (*[]Indexer, error) {
+	return GetValidIndexersContext(context.Background())
+}
+
+func GetInfoHashContext(ctx context.Context, url string) (string, error) {
+	res, err := httpGet(ctx, url, 5*time.Second)
 	if err != nil {
 		return "", err
 	}
@@ -156,14 +181,21 @@ func GetInfoHash(url string) (string, error) {
 	return torrent.InfoHash, nil
 }
 
-func Query(str string, indexers []string) (*[]Result, error) {
+func GetInfoHash(url string) (string, error) {
+	return GetInfoHashContext(context.Background(), url)
+}
 
-	var u = "indexers/status:healthy,test:passed/results?apikey=" + apiKey
+func QueryContext(ctx context.Context, str string, indexers []string) (*[]Result, error) {
+
+	var u = "indexers/status:healthy,test:passed/results?apikey=" + apiKey()
 	for _, indexer := range indexers {
 		u = u + "&Tracker[]=" + indexer
 	}
 	u = u + "&Query=" + url.QueryEscape(str)
-	data, err := httpGet(baseUrl+u, 30*time.Second)
+	// The deadline is configurable ("jackett.timeout", 60s by default) because
+	// Jackett queries every configured indexer sequentially, and a broad search
+	// over slow trackers easily outlives a single-request timeout.
+	data, err := httpGet(ctx, baseUrl()+u, common.Settings.JackettTimeout())
 	if err != nil {
 		return nil, errors.Wrap(err, "Jackett")
 	}
@@ -176,10 +208,11 @@ func Query(str string, indexers []string) (*[]Result, error) {
 	return &r.Results, nil
 }
 
+func Query(str string, indexers []string) (*[]Result, error) {
+	return QueryContext(context.Background(), str, indexers)
+}
+
 func init() {
-	var jkt = &common.Settings.Jackett
-	apiKey = jkt.APIKey
-	baseUrl = "http://" + jkt.Host + ":" + strconv.Itoa(jkt.Port) + "/api/v2.0/"
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		log.Fatalf("error creating cookie jar %s", err.Error())

@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 
+	"torrentino/common/list"
 	"torrentino/common/utils"
 )
 
@@ -37,8 +37,11 @@ type Actor interface {
 	Execute(i int, action string) (unselect bool)
 }
 
+// Paginator is the Telegram renderer. The state itself (items, sorting,
+// filtering, page, selection) lives in the shared list.View, so the web
+// interface and the bot cannot drift apart.
 type Paginator struct {
-	List
+	list.View
 
 	Builder
 	Actor
@@ -47,11 +50,6 @@ type Paginator struct {
 	ctx     context.Context
 	message *models.Message
 	update  *models.Update
-
-	extControls  bool
-	activePage   int
-	itemsPerPage int
-	selectedItem int
 
 	prefix   string
 	text     string
@@ -63,22 +61,22 @@ func New(
 	prefix string, itemsPerPage int, builder Builder, actor Actor, evaluator Evaluator,
 ) *Paginator {
 	p := &Paginator{
-		ctx:          ctx,
-		bot:          b,
-		update:       update,
-		itemsPerPage: itemsPerPage,
-		prefix:       prefix,
-		selectedItem: -1,
+		ctx:    ctx,
+		bot:    b,
+		update: update,
+		prefix: prefix,
 	}
+	p.View = list.NewView(itemsPerPage)
 	p.Builder = builder
 	p.Actor = actor
-	p.List.Evaluator = evaluator
+	p.View.Actor = actor
+	p.View.List.Evaluator = evaluator
 	return p
 }
 
 // ----------"Builder" interface----------------
 func (p *Paginator) Header() string {
-	var fromIndex, toIndex = p.pageBounds()
+	var fromIndex, toIndex = p.Bounds()
 	if fromIndex < toIndex {
 		return "<b>results: " + strconv.Itoa(fromIndex+1) + "-" + strconv.Itoa(toIndex) + " of " + strconv.Itoa(p.Len()) + "</b>"
 	} else {
@@ -139,13 +137,7 @@ func (p *Paginator) ReplyDocument(doc *models.InputFileUpload) {
 }
 
 func (p *Paginator) pageBounds() (int, int) {
-	var maxItems int = p.Len()
-	var fromIndex = p.activePage * p.itemsPerPage
-	var toIndex = fromIndex + p.itemsPerPage
-	if toIndex > maxItems {
-		toIndex = maxItems
-	}
-	return fromIndex, toIndex
+	return p.Bounds()
 }
 
 func (p *Paginator) buildText() string {
@@ -155,11 +147,11 @@ func (p *Paginator) buildText() string {
 	br := "\n\n"
 
 	text = text + p.Builder.Header() + hr
-	fromIndex, toIndex := p.pageBounds()
+	fromIndex, toIndex := p.Bounds()
 	for i := fromIndex; i < toIndex; i++ {
 		text = text + "<b>" + strconv.Itoa(i+1) + ".</b> " +
 			(func() string {
-				if p.selectedItem == i {
+				if p.Selected == i {
 					return "<u>" + p.Builder.Line(i) + "</u>"
 				} else {
 					return p.Builder.Line(i)
@@ -199,10 +191,10 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 	var keyboard [][]models.InlineKeyboardButton
 	var row []models.InlineKeyboardButton
 
-	var fromIndex, toIndex = p.pageBounds()
+	var fromIndex, toIndex = p.Bounds()
 	for i := fromIndex; i < toIndex; i++ {
 		btnCap := strconv.Itoa(i + 1)
-		if i == p.selectedItem {
+		if i == p.Selected {
 			btnCap = "(" + btnCap + ")"
 		}
 		row = append(row, models.InlineKeyboardButton{Text: btnCap, CallbackData: p.prefix + strconv.Itoa(i)})
@@ -211,9 +203,9 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 		keyboard = append(keyboard, row)
 	}
 
-	if p.extControls {
+	if p.Controls {
 		row = []models.InlineKeyboardButton{}
-		for _, attr := range p.sorting.attributes.Iter() {
+		for _, attr := range p.Sortings() {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         attr.Alias + sortChars[int(attr.Order)],
 				CallbackData: p.prefix + CB_ORDER_BY + attr.Attribute,
@@ -223,13 +215,13 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 			keyboard = append(keyboard, row)
 		}
 
-		for attr, buttons := range p.filters.Iter() {
+		for _, attribute := range p.FilterAttributes() {
 			row = []models.InlineKeyboardButton{}
 			i := 0
-			for button, enabled := range buttons.Iter() {
+			for _, value := range p.FilterValues(attribute) {
 				row = append(row, models.InlineKeyboardButton{
-					Text:         []string{"", "✓"}[btoi(enabled)] + button,
-					CallbackData: p.prefix + CB_FILTER_BY + attr + "/" + button,
+					Text:         []string{"", "✓"}[btoi(value.Enabled)] + value.Value,
+					CallbackData: p.prefix + CB_FILTER_BY + attribute + "/" + value.Value,
 				})
 				if (i+1)%4 == 0 { // 4 buttons max
 					keyboard = append(keyboard, row)
@@ -244,18 +236,18 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 	}
 
 	row = []models.InlineKeyboardButton{
-		chooseButton(p.activePage > 0,
+		chooseButton(p.Page > 0,
 			[2]buttonData{{"⬅", p.prefix + CB_PREV_PAGE}, {"-", p.prefix + CB_STUB}}),
-		chooseButton(p.extControls,
+		chooseButton(p.Controls,
 			[2]buttonData{{"🔺", p.prefix + CB_TOGGLE_FILTERS}, {"🔻", p.prefix + CB_TOGGLE_FILTERS}}),
-		chooseButton(p.activePage < ((p.Len()-1)/p.itemsPerPage),
+		chooseButton(p.Page < p.LastPage(),
 			[2]buttonData{{"➡", p.prefix + CB_NEXT_PAGE}, {"-", p.prefix + CB_STUB}}),
 	}
 	keyboard = append(keyboard, row)
 
-	if !p.extControls && (p.selectedItem >= fromIndex) && (p.selectedItem < toIndex) {
+	if !p.Controls && (p.Selected >= fromIndex) && (p.Selected < toIndex) {
 		row = []models.InlineKeyboardButton{}
-		for i, action := range p.Actor.Actions(p.selectedItem) {
+		for i, action := range p.Actor.Actions(p.Selected) {
 			row = append(row, models.InlineKeyboardButton{
 				Text:         action,
 				CallbackData: p.prefix + CB_ACTION + action,
@@ -274,8 +266,7 @@ func (p *Paginator) buildKeyboard() [][]models.InlineKeyboardButton {
 
 func (p *Paginator) Show() {
 	var err error
-	p.Filter()
-	p.Sort()
+	p.Prepare()
 	text := p.buildText()
 	keyboard := p.buildKeyboard()
 
@@ -323,53 +314,101 @@ func (p *Paginator) Show() {
 	}
 }
 
+// lastPage is the index of the final page. The "next" button and its handler
+// must agree on this value, otherwise a press can move past the last non-empty
+// page and show an empty list.
+func (p *Paginator) lastPage() int {
+	return p.LastPage()
+}
+
+// parseItemIndex reports whether the command is a plain decimal item index.
+// Only ASCII digits are accepted: the keyboard generates these values itself,
+// so anything else is stale or forged data that must not be interpreted.
+func parseItemIndex(cmd string) (int, bool) {
+	if cmd == "" {
+		return 0, false
+	}
+	for i := 0; i < len(cmd); i++ {
+		if cmd[i] < '0' || cmd[i] > '9' {
+			return 0, false
+		}
+	}
+	item, err := strconv.Atoi(cmd)
+	if err != nil {
+		return 0, false
+	}
+	return item, true
+}
+
 func (p *Paginator) callbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update == nil || update.CallbackQuery == nil {
+		return
+	}
 
 	cmd := strings.TrimPrefix(update.CallbackQuery.Data, p.prefix)
-	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+
+	if _, err := b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 		CallbackQueryID: update.CallbackQuery.ID,
 		Text:            cmd,
 		ShowAlert:       false,
-	})
+	}); err != nil {
+		utils.LogError(err)
+	}
 
-	if unicode.IsNumber(rune(cmd[0])) {
-		p.selectedItem, _ = strconv.Atoi(cmd)
-		p.extControls = false
+	p.dispatch(cmd)
+	p.Show()
+}
+
+// dispatch applies a single button press.
+//
+// Callback data comes back from Telegram and can be empty, malformed or stale
+// (a message from an older build, a list that shrank since the keyboard was
+// drawn), so every branch validates its input. The actual state changes go
+// through list.View, the same operations the web command parser uses.
+func (p *Paginator) dispatch(cmd string) {
+
+	if item, ok := parseItemIndex(cmd); ok {
+		p.Select(item)
+		return
 	}
 
 	switch cmd {
 	case CB_NEXT_PAGE:
-		if p.activePage < (p.Len() / p.itemsPerPage) {
-			p.activePage++
-		}
+		p.NextPage()
+		return
 
 	case CB_PREV_PAGE:
-		if p.activePage > 0 {
-			p.activePage--
-		}
+		p.PrevPage()
+		return
 
 	case CB_TOGGLE_FILTERS:
-		p.extControls = !p.extControls
+		p.ToggleControls()
+		return
+
+	case CB_STUB, "": // no-op, but must not fall through to the command parsing
+		return
 	}
 
-	if len(cmd) > 10 {
-		var payload = cmd[10:]
-		switch cmd[0:10] {
+	// Commands carrying a payload: <command><payload>.
+	for _, command := range []string{CB_ORDER_BY, CB_FILTER_BY, CB_ACTION} {
+		payload, ok := strings.CutPrefix(cmd, command)
+		if !ok {
+			continue
+		}
+		switch command {
 		case CB_ORDER_BY:
 			p.ToggleSorting(payload)
-			p.selectedItem = -1
 		case CB_FILTER_BY:
-			split := strings.Split(payload, "/")
-			p.ToggleFilter(split[0], split[1])
-			p.activePage = 0
-			p.selectedItem = -1
-		case CB_ACTION:
-			if p.selectedItem != -1 {
-				if p.Actor.Execute(p.selectedItem, payload) {
-					p.selectedItem = -1
-				}
+			attribute, value, ok := strings.Cut(payload, "/")
+			if !ok {
+				return
 			}
+			p.ToggleFilter(attribute, value)
+		case CB_ACTION:
+			// ExecuteSelected checks the selection against the current list;
+			// it may point outside after a reload or a filter change.
+			p.ExecuteSelected(payload)
 		}
+		return
 	}
-	p.Show()
 }

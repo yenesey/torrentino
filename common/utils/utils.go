@@ -68,15 +68,14 @@ func ReadDir(rootPath string, recursive bool) (<-chan FileInfo, error) {
 		for i := range entries {
 			var fi FileInfo
 			info, _err := entries[i].Info()
-			if err == nil {
-				fi.Name = info.Name()
-				fi.Size = info.Size()
-				fi.IsDir = info.IsDir()
-				fi.ModTime = info.ModTime()
-			} else {
+			if _err != nil {
 				err = _err
 				return
 			}
+			fi.Name = info.Name()
+			fi.Size = info.Size()
+			fi.IsDir = info.IsDir()
+			fi.ModTime = info.ModTime()
 			if recursive && fi.IsDir {
 				readDirRec(path.Join(dirPath, fi.Name))
 			} else {
