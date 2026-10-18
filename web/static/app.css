@@ -118,7 +118,8 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .chips { display: flex; flex-wrap: wrap; gap: .4rem; min-width: 0; }
 .chips button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 999px; padding: .3rem .55rem; line-height: 1.2; min-height: 33px; }
 .chips button.enabled { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-.actions { margin: 0 0 .5rem; padding: 0 0 .5rem; border-bottom: 1px solid var(--line); }
+.actions { margin: 0; padding: .1rem .35rem .55rem; border-bottom: 0; }
+.row-actions { flex: 1 1 100%; }
 .actions button, .actions .linklike { min-height: 33px; padding: .3rem .5rem; line-height: 1.2; }
 .pager button { min-height: 33px; padding: .3rem .5rem; line-height: 1.2; }
 .actions .buttons { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }

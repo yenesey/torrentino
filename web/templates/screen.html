@@ -84,29 +84,28 @@
             <span class="meta">[{{.TorrentSize}}]</span>
           {{end}}
         </button>
+        {{if .Selected}}
+        <div class="actions row-actions" role="group" aria-label="Selected item actions">
+          <div class="buttons">
+            {{range $.Screen.Actions}}
+              {{if eq .ID ".torrent"}}
+                <a class="linklike" href="{{$.Screen.SelectedRow.TorrentURL}}">.torrent</a>
+              {{else if eq .ID "web page"}}
+                {{if $.Screen.SelectedRow.DetailsURL}}<a class="linklike" href="{{$.Screen.SelectedRow.DetailsURL}}" target="_blank" rel="noopener noreferrer">web page</a>{{end}}
+              {{else}}
+                <button type="submit" name="cmd" value="{{.Cmd}}" class="{{if .Danger}}danger{{end}}"{{if .Title}} title="{{.Title}}"{{end}}>{{.Label}}</button>
+              {{end}}
+            {{end}}
+            <button type="submit" name="cmd" value="deselect">deselect</button>
+          </div>
+        </div>
+        {{end}}
       </li>
       {{end}}
     </ul>
     {{end}}
 
     <div class="bottom-bar">
-      {{if .Screen.SelectedRow}}
-      <div class="actions" role="group" aria-label="Selected item actions">
-        <div class="buttons">
-          {{$root := .}}
-          {{range .Screen.Actions}}
-            {{if eq .ID ".torrent"}}
-              <a class="linklike" href="{{$root.Screen.SelectedRow.TorrentURL}}">.torrent</a>
-            {{else if eq .ID "web page"}}
-              {{if $root.Screen.SelectedRow.DetailsURL}}<a class="linklike" href="{{$root.Screen.SelectedRow.DetailsURL}}" target="_blank" rel="noopener noreferrer">web page</a>{{end}}
-            {{else}}
-              <button type="submit" name="cmd" value="{{.Cmd}}" class="{{if .Danger}}danger{{end}}"{{if .Title}} title="{{.Title}}"{{end}}>{{.Label}}</button>
-            {{end}}
-          {{end}}
-          <button type="submit" name="cmd" value="deselect">deselect</button>
-        </div>
-      </div>
-      {{end}}
       <div class="pager">
         <button type="submit" name="cmd" value="page:prev" {{if not .Screen.HasPrev}}disabled{{end}}>◀ Prev</button>
         <span class="muted">page {{inc .Screen.Page}} of {{inc .Screen.LastPage}}</span>
