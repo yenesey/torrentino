@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -41,8 +42,9 @@ func main() {
 	// The Telegram client library logs the request URL on network errors, and
 	// that URL contains the bot token. Wrap the standard logger so no token
 	// reaches /var/log/torrentino.log.
+	log.SetFlags(0)
 	log.SetOutput(redactingWriter{
-		out:     os.Stderr,
+		out:     timestampWriter{out: os.Stderr},
 		pattern: regexp.MustCompile(`bot[0-9]+:[A-Za-z0-9_-]+`),
 	})
 
@@ -146,6 +148,28 @@ func printPasswordHash() error {
 
 // redactingWriter removes bot tokens from log lines before they reach stderr
 // (which systemd appends to /var/log/torrentino.log).
+type timestampWriter struct {
+	out io.Writer
+}
+
+// Write prefixes each log record with a local timestamp using the
+// YYYY-MM-DD layout instead of the standard library's YYYY/MM/DD.
+func (w timestampWriter) Write(p []byte) (int, error) {
+	stamp := []byte(time.Now().Format("2006-01-02 15:04:05") + " ")
+	for _, line := range bytes.SplitAfter(p, []byte("\n")) {
+		if len(line) == 0 {
+			continue
+		}
+		if _, err := w.out.Write(stamp); err != nil {
+			return 0, err
+		}
+		if _, err := w.out.Write(line); err != nil {
+			return 0, err
+		}
+	}
+	return len(p), nil
+}
+
 type redactingWriter struct {
 	out     io.Writer
 	pattern *regexp.Regexp

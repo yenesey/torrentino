@@ -35,3 +35,14 @@ func TestRedactingWriterLeavesOtherLinesAlone(t *testing.T) {
 		t.Errorf("line changed: %q", out.String())
 	}
 }
+
+func TestTimestampWriterUsesDashDate(t *testing.T) {
+	var out bytes.Buffer
+	writer := timestampWriter{out: &out}
+	if _, err := writer.Write([]byte("startup\n")); err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} startup\n$`).MatchString(out.String()) {
+		t.Errorf("unexpected timestamp layout: %q", out.String())
+	}
+}
