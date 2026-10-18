@@ -77,7 +77,7 @@
             </span>
           {{else if eq $.Screen.Kind "downloads"}}
             <span class="meta-line">
-              <span class="meta">[{{.Size}}] [{{.Percent}}] [{{.Ratio}}]</span>
+              <span class="meta">[{{.Size}}] <span class="progress-wrap" title="{{.Percent}}"><progress class="progress" value="{{.PercentValue}}" max="100" aria-label="Progress {{.Percent}}"></progress><span class="progress-label" aria-hidden="true">{{.Percent}}</span></span> [{{.Ratio}}]</span>
               {{if .OnDisk}}<span class="badge on-disk">on disk</span>{{else}}<span class="badge status-{{.Status}}">{{.Status}}</span>{{end}}
             </span>
           {{else}}

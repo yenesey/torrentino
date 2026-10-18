@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"math"
 
 	"torrentino/common/utils"
 	"torrentino/core"
@@ -92,15 +93,16 @@ type Row struct {
 	TorrentURL   string
 
 	// downloads
-	Icon     string
-	Name     string
-	Status   string
-	Percent  string
-	Ratio    string
-	OnDisk   bool
-	IsDir    bool
-	Ext      string
-	ExtCount int
+	Icon         string
+	Name         string
+	Status       string
+	Percent      string
+	PercentValue int
+	Ratio        string
+	OnDisk       bool
+	IsDir        bool
+	Ext          string
+	ExtCount     int
 
 	// torrserver
 	TorrentSize string
@@ -291,7 +293,15 @@ func (s *Server) buildRowLocked(screen *Screen, i int) Row {
 		row.Name = item.NameValue()
 		row.Icon = item.Icon()
 		row.Status = item.Status
-		row.Percent = fmt.Sprintf("%.0f%%", item.PercentDoneValue()*100)
+		percent := item.PercentDoneValue() * 100
+		if percent < 0 {
+			percent = 0
+		}
+		if percent > 100 {
+			percent = 100
+		}
+		row.PercentValue = int(math.Round(percent))
+		row.Percent = fmt.Sprintf("%d%%", row.PercentValue)
 		row.Ratio = fmt.Sprintf("%.2fx", item.UploadRatioValue())
 		row.OnDisk = item.Status == "unknown"
 		row.IsDir = item.IsDir
