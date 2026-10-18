@@ -24,6 +24,7 @@ import (
 
 const (
 	serviceTimeout  = 10 * time.Second
+	deleteTimeout   = 60 * time.Second
 	findTimeout     = 15 * time.Second
 	torrentTimeout  = 30 * time.Second
 	torrentMaxBytes = 25 << 20

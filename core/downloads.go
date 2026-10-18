@@ -333,7 +333,11 @@ func (s *Service) DoDownload(ctx context.Context, item *DownloadItem, action str
 	if item == nil {
 		return ErrStaleItem
 	}
-	ctx, cancel := context.WithTimeout(ctx, serviceTimeout)
+	timeout := serviceTimeout
+	if action == "delete" {
+		timeout = deleteTimeout
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	switch action {
 	case "delete":

@@ -54,7 +54,9 @@
 
   var busyOverlay = document.getElementById('busy');
   var busyScreen = document.getElementById('screen');
+  var busy = false;
   function setBusy(on) {
+    busy = on;
     if (busyOverlay) { busyOverlay.hidden = !on; }
     if (busyScreen) {
       if (on) {
@@ -188,6 +190,7 @@
     var url = pollTarget();
     if (!url) { stopPolling(); return; }
     timer = window.setInterval(function () {
+      if (busy) { return; }
       if (document.visibilityState !== 'visible') { return; }
       var current = pollTarget();
       if (!current) { stopPolling(); return; }

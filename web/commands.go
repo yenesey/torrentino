@@ -281,6 +281,10 @@ func (s *Server) commandAction(w http.ResponseWriter, r *http.Request, session *
 		// Allow the optional poster fallback to finish before Torrserver add.
 		timeout = 90 * time.Second
 	}
+	if screen.Kind == KindDownloads && action == "delete" {
+		// Transmission may take a while to stop/remove a large torrent.
+		timeout = 90 * time.Second
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 
