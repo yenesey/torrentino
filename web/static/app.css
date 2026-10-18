@@ -93,7 +93,7 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .row .meta { color: var(--muted); font-size: .9rem; white-space: nowrap; min-width: 0; overflow-wrap: anywhere; }
 .meta-line { display: flex; align-items: center; justify-content: flex-end; gap: .4rem; flex-wrap: wrap; min-width: 0; flex: 0 0 auto; margin-left: auto; }
 .meta-line .meta { flex: 0 1 auto; }
-.meta-line .badge { flex: 0 0 auto; }
+.meta-line .badge, .meta-line .markers { flex: 0 0 auto; }
 .progress-wrap { position: relative; display: inline-flex; align-items: center; width: 4.6rem; height: 1.3rem; margin: 0 .15rem; vertical-align: middle; }
 .progress { width: 100%; height: 100%; margin: 0; -webkit-appearance: none; appearance: none; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); overflow: hidden; }
 .progress::-webkit-progress-bar { background: var(--bg); }
@@ -150,7 +150,6 @@ button.primary:disabled { opacity: .6; cursor: progress; }
   .screen { padding: .65rem; border-radius: 0; border-left: 0; border-right: 0; }
   .row > .meta { white-space: normal; flex: 1 1 100%; }
   .meta-line { flex: 1 1 100%; justify-content: flex-start; }
-  .row .markers { flex: 1 1 100%; }
   .topbar { gap: .5rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

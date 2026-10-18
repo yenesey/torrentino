@@ -68,12 +68,14 @@
             {{end}}
           </span>
           {{if eq $.Screen.Kind "find"}}
-            <span class="meta">[{{.Size}}] [{{.Tracker}}] [{{.Seeds}}s/{{.Peers}}p]</span>
-            <span class="markers">
-              {{if .HasLink}}<span title=".torrent file available" aria-label=".torrent file available">📎</span>{{end}}
-              {{if .HasMagnet}}<span title="magnet link" aria-label="magnet link">🧲</span>{{end}}
-              {{if .InTorrents}}<span title="in Transmission" aria-label="in Transmission">📥</span>{{end}}
-              {{if .InTorrserver}}<span title="in Torrserver" aria-label="in Torrserver">🎦</span>{{end}}
+            <span class="meta-line">
+              <span class="meta">[{{.Size}}] [{{.Tracker}}] [{{.Seeds}}s/{{.Peers}}p]</span>
+              <span class="markers">
+                {{if .HasLink}}<span title=".torrent file available" aria-label=".torrent file available">📎</span>{{end}}
+                {{if .HasMagnet}}<span title="magnet link" aria-label="magnet link">🧲</span>{{end}}
+                {{if .InTorrents}}<span title="in Transmission" aria-label="in Transmission">📥</span>{{end}}
+                {{if .InTorrserver}}<span title="in Torrserver" aria-label="in Torrserver">🎦</span>{{end}}
+              </span>
             </span>
           {{else if eq $.Screen.Kind "downloads"}}
             <span class="meta-line">
@@ -81,7 +83,7 @@
               {{if .OnDisk}}<span class="badge on-disk">on disk</span>{{else}}<span class="badge status-{{.Status}}">{{.Status}}</span>{{end}}
             </span>
           {{else}}
-            <span class="meta">[{{.TorrentSize}}]</span>
+            <span class="meta-line"><span class="meta">[{{.TorrentSize}}]</span></span>
           {{end}}
         </button>
         {{if .Selected}}
