@@ -1033,3 +1033,22 @@ func TestPageChangeDeselects(t *testing.T) {
 		t.Errorf("state after page change: selected=%d key=%q", screen.View.Selected, screen.SelectedKey)
 	}
 }
+
+func TestFindSelectIgnoresHashResolutionFailure(t *testing.T) {
+	env := newTestEnv(t, "/")
+	env.jackett.results = []jackett.Result{{
+		Title: "one",
+		Link:  "http://jackett.example/a.torrent",
+	}}
+	env.jackett.hashErr = io.ErrUnexpectedEOF
+	csrf := env.csrf(t)
+	env.do(t, http.MethodPost, "/find/search", url.Values{"q": {"x"}}, csrf, true)
+
+	selected := env.do(t, http.MethodPost, "/ui/find/command", url.Values{"cmd": {"select:0"}}, csrf, true)
+	if selected.status != http.StatusOK || !strings.Contains(selected.body, `class="row selected"`) {
+		t.Fatalf("select = %d, body=%s", selected.status, selected.body)
+	}
+	if strings.Contains(selected.body, "The service is unavailable") {
+		t.Errorf("hash lookup failure leaked into a global error: %s", selected.body)
+	}
+}

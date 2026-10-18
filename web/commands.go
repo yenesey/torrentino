@@ -208,8 +208,10 @@ func (s *Server) commandSelect(w http.ResponseWriter, r *http.Request, session *
 		// than by the key captured before the lookup.
 		if screen.View.Selected == cmd.index && screen.View.ItemAt(cmd.index) == findItem {
 			if err != nil {
+				// Hash lookup is an optional enrichment of a search result.
+				// A broken/expired .torrent link must not turn selecting the
+				// row into a global "service unavailable" error.
 				log.Printf("[Torrentino]: web: resolve hash request_id=%s: %v", requestID(r), err)
-				screen.Err = err
 			} else {
 				findItem.InfoHash = copied.InfoHash
 				findItem.InTorrents = copied.InTorrents
