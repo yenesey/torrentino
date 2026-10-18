@@ -80,8 +80,8 @@ func (p *FindPaginator) Compare(i int, j int, attribute string) bool {
 func (p *FindPaginator) Actions(i int) (result []string) {
 	item := p.Item(i)
 
-	if item.InfoHash == "" && item.Link != "" {
-		if err := p.service.ResolveHash(p.ctx, item); err != nil {
+	if item.Link != "" && !item.TorrentAvailable {
+		if err := p.service.ProbeTorrent(p.ctx, item); err != nil {
 			utils.LogError(err)
 		}
 	}

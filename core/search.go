@@ -32,8 +32,9 @@ const (
 // FindItem is one Jackett search result plus the two "already exists" flags.
 type FindItem struct {
 	jackett.Result
-	InTorrents   bool
-	InTorrserver bool
+	InTorrents       bool
+	InTorrserver     bool
+	TorrentAvailable bool
 }
 
 // Search queries Jackett and marks results that already exist in Transmission
@@ -91,6 +92,27 @@ func (s *Service) Search(ctx context.Context, query string) ([]*FindItem, error)
 	return items, nil
 }
 
+// ProbeTorrent checks whether the result's .torrent can actually be fetched
+// and parsed. It also fills InfoHash when the result did not provide one.
+func (s *Service) ProbeTorrent(ctx context.Context, item *FindItem) error {
+	if item == nil {
+		return ErrStaleItem
+	}
+	if !safeHTTPURL(item.Link) {
+		return fmt.Errorf("%w: result has no valid .torrent link", ErrNotAvailable)
+	}
+	hash, err := s.Jackett.GetInfoHash(ctx, item.Link)
+	if err != nil {
+		item.TorrentAvailable = false
+		return Upstream(err)
+	}
+	if hash != "" {
+		item.InfoHash = hash
+	}
+	item.TorrentAvailable = true
+	return nil
+}
+
 // ResolveHash fills InfoHash for results that only expose a .torrent link.
 // The lookup has its own 5-second deadline inside the Jackett client.
 func (s *Service) ResolveHash(ctx context.Context, item *FindItem) error {
@@ -137,7 +159,7 @@ func (s *Service) FindActions(item *FindItem) []Action {
 	if !item.InTorrserver {
 		result = append(result, Action{ID: "torrsrv", Label: "torrsrv"})
 	}
-	if item.Link != "" {
+	if item.TorrentAvailable && item.Link != "" {
 		result = append(result, Action{ID: ".torrent", Label: ".torrent"})
 	}
 	if safeHTTPURL(item.Details) {

@@ -159,7 +159,7 @@ func TestResolveHash(t *testing.T) {
 
 func TestFindActions(t *testing.T) {
 	service, _, _, _ := testService()
-	item := &FindItem{Result: jackett.Result{Link: "http://x/a", Details: "http://x/details"}}
+	item := &FindItem{Result: jackett.Result{Link: "http://x/a", Details: "http://x/details"}, TorrentAvailable: true}
 	ids := ActionIDs(service.FindActions(item))
 	if strings.Join(ids, ",") != "->default,->series,->movie,torrsrv,.torrent,web page" {
 		t.Errorf("actions = %v", ids)
@@ -167,6 +167,7 @@ func TestFindActions(t *testing.T) {
 
 	item.InTorrents = true
 	item.InTorrserver = true
+	item.TorrentAvailable = false
 	item.Result.Link = ""
 	item.Result.MagnetUri = "magnet:?xt=urn:btih:x"
 	item.Result.Details = "javascript:alert(1)"
@@ -447,5 +448,26 @@ func TestPosterScrapingValidatesScheme(t *testing.T) {
 	defer bad.Close()
 	if got := service.Poster(context.Background(), bad.URL, "rutracker"); got != "" {
 		t.Errorf("javascript poster = %q, want empty", got)
+	}
+}
+
+func TestProbeTorrent(t *testing.T) {
+	service, j, _, _ := testService()
+	j.hash = "abc"
+	item := &FindItem{Result: jackett.Result{Link: "http://x/a"}}
+	if err := service.ProbeTorrent(context.Background(), item); err != nil {
+		t.Fatal(err)
+	}
+	if !item.TorrentAvailable || item.InfoHash != "abc" {
+		t.Errorf("available=%v hash=%q", item.TorrentAvailable, item.InfoHash)
+	}
+
+	j.hashErr = errors.New("404")
+	item = &FindItem{Result: jackett.Result{Link: "http://x/a"}}
+	if err := service.ProbeTorrent(context.Background(), item); err == nil {
+		t.Fatal("ProbeTorrent succeeded for a broken link")
+	}
+	if item.TorrentAvailable {
+		t.Error("TorrentAvailable is true after a failed probe")
 	}
 }

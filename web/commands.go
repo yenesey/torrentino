@@ -197,9 +197,9 @@ func (s *Server) commandSelect(w http.ResponseWriter, r *http.Request, session *
 	}
 	screen.mu.Unlock()
 
-	if isFind && copied.InfoHash == "" && copied.Link != "" {
+	if isFind && copied.Link != "" {
 		ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
-		err := s.service.ResolveHash(ctx, &copied)
+		err := s.service.ProbeTorrent(ctx, &copied)
 		cancel()
 
 		screen.mu.Lock()
@@ -208,12 +208,13 @@ func (s *Server) commandSelect(w http.ResponseWriter, r *http.Request, session *
 		// than by the key captured before the lookup.
 		if screen.View.Selected == cmd.index && screen.View.ItemAt(cmd.index) == findItem {
 			if err != nil {
-				// Hash lookup is an optional enrichment of a search result.
 				// A broken/expired .torrent link must not turn selecting the
 				// row into a global "service unavailable" error.
-				log.Printf("[Torrentino]: web: resolve hash request_id=%s: %v", requestID(r), err)
+				findItem.TorrentAvailable = false
+				log.Printf("[Torrentino]: web: probe torrent request_id=%s: %v", requestID(r), err)
 			} else {
 				findItem.InfoHash = copied.InfoHash
+				findItem.TorrentAvailable = copied.TorrentAvailable
 				findItem.InTorrents = copied.InTorrents
 				findItem.InTorrserver = copied.InTorrserver
 				screen.Err = nil

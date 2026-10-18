@@ -1054,4 +1054,7 @@ func TestFindSelectIgnoresHashResolutionFailure(t *testing.T) {
 	if strings.Contains(selected.body, "The service is unavailable") {
 		t.Errorf("hash lookup failure leaked into a global error: %s", selected.body)
 	}
+	if strings.Contains(selected.body, `>.torrent</a>`) {
+		t.Errorf("unavailable .torrent action is still rendered: %s", selected.body)
+	}
 }
