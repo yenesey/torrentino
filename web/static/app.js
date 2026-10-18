@@ -55,6 +55,11 @@
   var busyOverlay = document.getElementById('busy');
   var busyScreen = document.getElementById('screen');
   var busy = false;
+  var selectingRow = false;
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    selectingRow = !!(target && target.closest && target.closest('button.select'));
+  }, true);
   function setBusy(on) {
     busy = on;
     if (busyOverlay) { busyOverlay.hidden = !on; }
@@ -77,7 +82,14 @@
     return !!path && path.indexOf('poll=1') !== -1;
   }
   document.addEventListener('htmx:beforeRequest', function (event) {
-    if (!isPoll(event)) { setBusy(true); }
+    if (isPoll(event)) { return; }
+    // Selecting/deselecting a row is a quick navigation-like action; do not
+    // flash the blocking "Working…" overlay for it.
+    if (selectingRow) {
+      selectingRow = false;
+      return;
+    }
+    setBusy(true);
   });
   document.addEventListener('htmx:afterSettle', function (event) {
     if (!isPoll(event)) { setBusy(false); }
