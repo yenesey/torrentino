@@ -2,6 +2,14 @@
 // wrong theme. app.js owns the toggle and persists the explicit choice.
 (function () {
   'use strict';
+
+  var ua = navigator.userAgent || '';
+  if (/Android/i.test(ua)) {
+    document.documentElement.setAttribute('data-os', 'android');
+  } else if (/Windows/i.test(ua)) {
+    document.documentElement.setAttribute('data-os', 'windows');
+  }
+
   try {
     var saved = localStorage.getItem('torrentino-theme');
     var theme = (saved === 'light' || saved === 'dark')

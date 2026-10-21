@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-//go:embed templates/*.html static/*
+//go:embed templates/*.html static
 var contentFS embed.FS
 
 var (
@@ -52,8 +52,15 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if contentType := mime.TypeByExtension(path.Ext(name)); contentType != "" {
-		w.Header().Set("Content-Type", contentType)
+	switch path.Ext(name) {
+	case ".ttf":
+		w.Header().Set("Content-Type", "font/ttf")
+	case ".woff2":
+		w.Header().Set("Content-Type", "font/woff2")
+	default:
+		if contentType := mime.TypeByExtension(path.Ext(name)); contentType != "" {
+			w.Header().Set("Content-Type", contentType)
+		}
 	}
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(data))
