@@ -114,7 +114,7 @@ button.primary:disabled { opacity: .6; cursor: progress; }
 .titleline .title { overflow-wrap: anywhere; word-break: break-word; }
 .titleline .num { margin-right: .25rem; }
 .titleline .icon, .titleline .badge { margin-right: .3rem; }
-.row .title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.row .title { font-weight: 400; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .row .meta { color: var(--muted); font-size: .9rem; white-space: nowrap; min-width: 0; overflow-wrap: anywhere; }
 .meta-line { display: flex; align-items: center; justify-content: flex-end; gap: .4rem; flex-wrap: wrap; min-width: 0; flex: 0 0 auto; margin-left: auto; }
 .meta-line .meta { flex: 0 1 auto; }
