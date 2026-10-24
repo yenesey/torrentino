@@ -59,6 +59,7 @@
 :root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+html { scrollbar-gutter: stable; }
 body {
   background: var(--bg);
   color: var(--text);
