@@ -56,9 +56,11 @@
   var busyScreen = document.getElementById('screen');
   var busy = false;
   var selectingRow = false;
+  var paging = false;
   document.addEventListener('click', function (event) {
     var target = event.target;
     selectingRow = !!(target && target.closest && target.closest('button.select'));
+    paging = !!(target && target.closest && target.closest('.pager button'));
   }, true);
   function setBusy(on) {
     busy = on;
@@ -85,8 +87,9 @@
     if (isPoll(event)) { return; }
     // Selecting/deselecting a row is a quick navigation-like action; do not
     // flash the blocking "Working…" overlay for it.
-    if (selectingRow) {
+    if (selectingRow || paging) {
       selectingRow = false;
+      paging = false;
       return;
     }
     setBusy(true);
