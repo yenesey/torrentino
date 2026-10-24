@@ -113,6 +113,7 @@
         <button type="submit" name="cmd" value="page:next" {{if not .Screen.HasNext}}disabled{{end}}>Next ▶</button>
       </div>
       {{if .Screen.Footer}}<div class="footer-note"><span>{{.Screen.Footer}}</span></div>{{end}}
+      <div class="pagefoot">build {{.Build}}</div>
     </div>
   </form>
 </main>{{end}}
