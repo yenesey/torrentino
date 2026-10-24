@@ -22,7 +22,6 @@ type PageData struct {
 	User          string
 	Kind          string
 	Nav           []NavItem
-	Build         string
 	StaticVersion string
 	Screen        ScreenView
 }
@@ -33,7 +32,6 @@ type LoginData struct {
 	Next          string
 	CSRF          string
 	Error         string
-	Build         string
 	StaticVersion string
 	LoginURL      string
 }
@@ -118,7 +116,6 @@ func (s *Server) buildPageData(session *Session, screenView ScreenView) PageData
 		CSRF:          session.CSRF,
 		User:          session.User,
 		Kind:          screenView.Kind,
-		Build:         s.buildVersion,
 		StaticVersion: s.staticVersion,
 		Screen:        screenView,
 		Nav: []NavItem{

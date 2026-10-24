@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"runtime/debug"
 	"strings"
 	"time"
 
@@ -27,7 +26,6 @@ type Server struct {
 	searchLimiter *windowLimiter
 
 	templates     *template.Template
-	buildVersion  string
 	staticVersion string
 	dummyHash     string
 	trusted       []*net.IPNet
@@ -72,7 +70,6 @@ func NewServer(service *core.Service) (*Server, error) {
 		users:         users,
 		limiter:       newLoginLimiter(loginMaxFailures, loginWindow),
 		searchLimiter: newWindowLimiter(10, time.Minute),
-		buildVersion:  buildVersion(),
 		staticVersion: staticVersion(),
 		dummyHash:     dummyPasswordHash,
 		trusted:       trusted,
@@ -218,31 +215,4 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleFavicon(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func buildVersion() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "devel"
-	}
-	var revision string
-	var modified bool
-	for _, setting := range info.Settings {
-		switch setting.Key {
-		case "vcs.revision":
-			revision = setting.Value
-		case "vcs.modified":
-			modified = setting.Value == "true"
-		}
-	}
-	if revision == "" {
-		return "devel"
-	}
-	if len(revision) > 12 {
-		revision = revision[:12]
-	}
-	if modified {
-		revision += "+dirty"
-	}
-	return revision
 }

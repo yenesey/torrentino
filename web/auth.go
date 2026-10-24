@@ -201,7 +201,6 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 		Next:          next,
 		CSRF:          csrf,
 		Error:         errMsg,
-		Build:         s.buildVersion,
 		StaticVersion: s.staticVersion,
 		LoginURL:      s.base.URL("/login"),
 	}
