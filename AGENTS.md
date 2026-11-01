@@ -302,6 +302,20 @@ htmx.min.js}`. Все действия — POST с CSRF; GET ничего не �
 `/var/log/torrentino.log`, `Restart=always`. Обновление — `sudo ./update-service.sh`
 (собирает с `-ldflags "-s -w"`, останавливает сервис, подменяет бинарник, запускает).
 
+Ротация лога: systemd держит `/var/log/torrentino.log` открытым
+(`StandardOutput=append:`), поэтому конфиг logrotate обязан использовать
+`copytruncate` — иначе после `create` сервис продолжит писать в переименованный
+файл. Шаблон — `deploy/logrotate/torrentino.conf`:
+
+```bash
+sudo install -m 0644 deploy/logrotate/torrentino.conf /etc/logrotate.d/torrentino
+sudo /usr/sbin/logrotate -d /etc/logrotate.d/torrentino   # проверка синтаксиса
+sudo /usr/sbin/logrotate -f /etc/logrotate.d/torrentino   # ротация сейчас
+```
+
+Штатное расписание даёт `logrotate.timer` (проверка: `systemctl list-timers
+logrotate.timer`); отдельный cron не нужен.
+
 Веб-деплой: `https://torrentino.example.com/`, nginx на 443,
 приложение на `127.0.0.1:8088` (`web.base-path: "/"`, `secure-cookies: true`,
 `trusted-proxies: ["127.0.0.1/32"]`). Сайт nginx —
