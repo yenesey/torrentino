@@ -3,12 +3,12 @@ package web
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"torrentino/common"
+	"torrentino/common/logging"
 	"torrentino/common/password"
 )
 
@@ -119,7 +119,7 @@ func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
 		for _, key := range keys {
 			s.limiter.Failure(key)
 		}
-		log.Printf("[Torrentino]: web: login failed user=%q ip=%s request_id=%s",
+		logging.Warn(logging.TagWeb, "login failed user=%q ip=%s request_id=%s",
 			username, s.clientIP(r), requestID(r))
 		s.renderLogin(w, r, http.StatusOK, "Invalid username or password", next, formToken)
 		return
@@ -136,7 +136,7 @@ func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
 	_ = session
 	s.clearCookie(w, r, loginCookie)
 	s.setCookie(w, r, sessionCookie, token, s.base.CookiePath(), common.Settings.WebSessionMaxAge())
-	log.Printf("[Torrentino]: web: login ok user=%q ip=%s request_id=%s",
+	logging.Info(logging.TagWeb, "login ok user=%q ip=%s request_id=%s",
 		canonical, s.clientIP(r), requestID(r))
 	s.redirect(w, r, next)
 }
@@ -147,7 +147,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request, session *S
 		s.store.Delete(cookie.Value)
 	}
 	s.clearCookie(w, r, sessionCookie)
-	log.Printf("[Torrentino]: web: logout user=%q ip=%s request_id=%s",
+	logging.Info(logging.TagWeb, "logout user=%q ip=%s request_id=%s",
 		session.User, s.clientIP(r), requestID(r))
 	s.redirect(w, r, s.base.URL("/login"))
 }
@@ -208,16 +208,16 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 }
 
 func (s *Server) internalError(w http.ResponseWriter, r *http.Request, err error) {
-	log.Printf("[Torrentino]: web: internal error request_id=%s: %v", requestID(r), err)
+	logging.Error(logging.TagWeb, "internal error request_id=%s: %v", requestID(r), err)
 	http.Error(w, "internal server error", http.StatusInternalServerError)
 }
 
 func (s *Server) forbidden(w http.ResponseWriter, r *http.Request, reason string) {
-	log.Printf("[Torrentino]: web: forbidden request_id=%s reason=%s", requestID(r), reason)
+	logging.Warn(logging.TagWeb, "forbidden request_id=%s reason=%s", requestID(r), reason)
 	http.Error(w, "forbidden", http.StatusForbidden)
 }
 
 func (s *Server) badRequest(w http.ResponseWriter, r *http.Request, reason string) {
-	log.Printf("[Torrentino]: web: bad request request_id=%s reason=%s", requestID(r), reason)
+	logging.Warn(logging.TagWeb, "bad request request_id=%s reason=%s", requestID(r), reason)
 	http.Error(w, "bad request", http.StatusBadRequest)
 }

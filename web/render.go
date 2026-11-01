@@ -3,8 +3,9 @@ package web
 import (
 	"bytes"
 	"html/template"
-	"log"
 	"net/http"
+
+	"torrentino/common/logging"
 )
 
 func parseTemplates() (*template.Template, error) {
@@ -22,7 +23,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name
 	}
 	var buf bytes.Buffer
 	if err := s.templates.ExecuteTemplate(&buf, page, data); err != nil {
-		log.Printf("[Torrentino]: web: template %q: %v request_id=%s", page, err, requestID(r))
+		logging.Error(logging.TagWeb, "template %q: %v request_id=%s", page, err, requestID(r))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

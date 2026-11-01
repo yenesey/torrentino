@@ -67,6 +67,7 @@ common/
   password/password.go      PBKDF2-HMAC-SHA256 хеши/проверка, формат для settings.json
   password/password_test.go тесты формата, соли и проверки пароля
   utils/utils.go            FormatFileSize, ReadDir (канал), WithTimeout, LogError
+  logging/logging.go        уровни [ERR]/[WRN]/[INF] и теги [WEB]/[TGBOT] для строк лога
   ordmap/ordmap.go          generic-ordered map с iter.Seq2 (итераторы Go 1.23+)
   list/list.go              UI-агностичный List: индексы, Evaluator, Sorting, фильтры, очередь
   list/view.go              list.View: страница, выбор, Prepare, Select, Toggle*, ExecuteSelected
@@ -156,9 +157,13 @@ htmx.min.js}`. Все действия — POST с CSRF; GET ничего не �
 - Вычисляемые значения для отображения — в `core/presentation`; HTML/Telegram-markup — только
   в `web`/`telegram`.
 - Ошибки оборачиваются `github.com/pkg/errors` и логируются через `utils.LogError`
-  (печатает файл, строку и имя функции). Исключение — `common/settings.go`: там
-  используется stdlib `errors` / `fmt.Errorf` с `%w`, а конфигурационные ошибки
-  фатальны и намеренно не проходят через `utils.LogError`.
+  (печатает файл, строку и имя функции, добавляет `[ERR]` и тег `[WEB]`/`[TGBOT]`).
+  Исключение — `common/settings.go`: там используется stdlib `errors` / `fmt.Errorf`
+  с `%w`, а конфигурационные ошибки фатальны и намеренно не проходят через
+  `utils.LogError`.
+- Формат лога — `YYYY-MM-DD HH:MM:SS [ERR|WRN|INF] [WEB|TGBOT] сообщение`; дату
+  добавляет writer в `main`, уровень и тег — `common/logging`. Общие для web и
+  Telegram записи (конфиг, `core`, `common/list`) идут без подкатегории.
 - Внешние вызовы ограничены таймаутами и контекстом: Jackett/Transmission/Torrserver
   принимают `context.Context` (`*Context`-варианты), `.torrent` — 30 с/25 МБ, постер —
   10 с/2 МБ, действия web — 20 с. Таймаут поиска Jackett (60 с по умолчанию) берётся из
@@ -254,8 +259,9 @@ htmx.min.js}`. Все действия — POST с CSRF; GET ничего не �
    и `.torrent` вынесены в `core` с таймаутами и лимитами.
 10. **Только Unix:** `syscall.Statfs` в футере `/downloads` делает сборку под Windows
     невозможной без правок.
-11. **`utils.LogError`** предполагает путь пакета с префиксом (`parts[0][11:]`) — вызов
-    из нестандартного окружения может дать мусорное имя.
+11. **`utils.LogError`** срезает префикс модуля `torrentino/` через `strings.TrimPrefix`
+    и выводит тег по пакету вызывающего: `web` → `[WEB]`, `telegram`/`common/paginator`
+    → `[TGBOT]`, общие пакеты — без тега.
 12. **Мёртвый код в `api/jackett`:** `GetValidIndexers` никто не вызывает, а его запрос
     был относительным URL (`indexers?Configured=true`) и всё равно не сработал бы;
     сейчас URL достроен до абсолютного. Мораль та же, что с `httPost`: неиспользуемые

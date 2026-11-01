@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/url"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"torrentino/common/logging"
 	"torrentino/common/password"
 )
 
@@ -112,7 +112,7 @@ func LoadSettingsFrom(fileName string) error {
 // broken config is not recoverable: report the problem and terminate.
 func MustLoadSettings() {
 	if err := LoadSettings(); err != nil {
-		log.Fatalf("[Torrentino]: startup failed: %s", err)
+		logging.Fatalf(logging.TagNone, "startup failed: %s", err)
 	}
 }
 
@@ -290,11 +290,11 @@ func (s *SettingsStruct) validate() error {
 // warn reports settings that are usable but most likely unintended.
 func (s *SettingsStruct) warn() {
 	if len(s.UsersList) == 0 {
-		log.Print(`[Torrentino]: warning: "users-list" is empty, every incoming message will be rejected; ` +
+		logging.Warn(logging.TagTGBot, `"users-list" is empty, every incoming message will be rejected; `+
 			`write to the bot and your user id will appear in the log`)
 	}
 	if s.Path.Default == "" || s.Path.Movie == "" || s.Path.Series == "" {
-		log.Print(`[Torrentino]: warning: "path.default/movie/series" are not fully set, ` +
+		logging.Warn(logging.TagNone, `"path.default/movie/series" are not fully set, `+
 			`downloads will be placed into the Transmission default directory`)
 	}
 	if s.Web.Enabled {
@@ -400,12 +400,12 @@ func (w *WebStruct) warn() {
 			loopback = true
 		}
 		if !loopback {
-			log.Print(`[Torrentino]: warning: "web.listen" is not loopback and TLS is not configured; ` +
+			logging.Warn(logging.TagWeb, `"web.listen" is not loopback and TLS is not configured; `+
 				`the web interface will be reachable over plain HTTP`)
 		}
 	}
 	if w.BasePath != "" && w.BasePath != "/" && len(w.TrustedProxies) == 0 {
-		log.Print(`[Torrentino]: warning: "web.base-path" is set but "web.trusted-proxies" is empty; ` +
+		logging.Warn(logging.TagWeb, `"web.base-path" is set but "web.trusted-proxies" is empty; `+
 			`X-Forwarded-* headers will be ignored`)
 	}
 }

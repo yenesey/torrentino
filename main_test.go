@@ -2,9 +2,12 @@ package main
 
 import (
 	"bytes"
+	"log"
 	"regexp"
 	"strings"
 	"testing"
+
+	"torrentino/common/logging"
 )
 
 func TestRedactingWriterRemovesBotToken(t *testing.T) {
@@ -44,5 +47,25 @@ func TestTimestampWriterUsesDashDate(t *testing.T) {
 	}
 	if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} startup\n$`).MatchString(out.String()) {
 		t.Errorf("unexpected timestamp layout: %q", out.String())
+	}
+}
+
+func TestLogLineHasTimestampLevelAndTag(t *testing.T) {
+	var out bytes.Buffer
+	oldWriter, oldFlags := log.Writer(), log.Flags()
+	log.SetFlags(0)
+	log.SetOutput(redactingWriter{
+		out:     timestampWriter{out: &out},
+		pattern: regexp.MustCompile(`bot[0-9]+:[A-Za-z0-9_-]+`),
+	})
+	t.Cleanup(func() {
+		log.SetOutput(oldWriter)
+		log.SetFlags(oldFlags)
+	})
+
+	logging.Info(logging.TagWeb, "hello %s", "world")
+	if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[INF\] \[WEB\] hello world\n$`).
+		MatchString(out.String()) {
+		t.Errorf("unexpected log line: %q", out.String())
 	}
 }

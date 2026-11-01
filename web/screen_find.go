@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,6 +12,7 @@ import (
 
 	"torrentino/common"
 	"torrentino/common/list"
+	"torrentino/common/logging"
 	"torrentino/core"
 )
 
@@ -32,7 +32,7 @@ func (s *Server) handleFindSearch(w http.ResponseWriter, r *http.Request, sessio
 		screen.mu.Lock()
 		screen.Err = errTooManySearches
 		screen.mu.Unlock()
-		log.Printf("[Torrentino]: web: search rate limited ip=%s request_id=%s", s.clientIP(r), requestID(r))
+		logging.Warn(logging.TagWeb, "search rate limited ip=%s request_id=%s", s.clientIP(r), requestID(r))
 		s.renderScreen(w, r, session, screen, http.StatusTooManyRequests)
 		return
 	}
@@ -82,7 +82,7 @@ func (s *Server) handleFindSearch(w http.ResponseWriter, r *http.Request, sessio
 	if err != nil {
 		screen.Err = err
 		screen.mu.Unlock()
-		log.Printf("[Torrentino]: web: search failed request_id=%s: %v", requestID(r), err)
+		logging.Error(logging.TagWeb, "search failed request_id=%s: %v", requestID(r), err)
 		if s.htmx(r) {
 			s.renderScreen(w, r, session, screen, http.StatusOK)
 			return

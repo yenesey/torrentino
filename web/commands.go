@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"torrentino/common/logging"
 	"torrentino/core"
 )
 
@@ -211,7 +211,7 @@ func (s *Server) commandSelect(w http.ResponseWriter, r *http.Request, session *
 				// A broken/expired .torrent link must not turn selecting the
 				// row into a global "service unavailable" error.
 				findItem.TorrentAvailable = false
-				log.Printf("[Torrentino]: web: probe torrent request_id=%s: %v", requestID(r), err)
+				logging.Warn(logging.TagWeb, "probe torrent request_id=%s: %v", requestID(r), err)
 			} else {
 				findItem.InfoHash = copied.InfoHash
 				findItem.TorrentAvailable = copied.TorrentAvailable
@@ -308,12 +308,17 @@ func (s *Server) commandAction(w http.ResponseWriter, r *http.Request, session *
 		return
 	}
 	if err != nil {
-		log.Printf("[Torrentino]: web: action %q failed request_id=%s: %v", action, requestID(r), err)
+		expected := errors.Is(err, core.ErrStaleItem) || errors.Is(err, core.ErrNotAvailable) ||
+			errors.Is(err, core.ErrUnsafePath)
+		if expected {
+			logging.Warn(logging.TagWeb, "action %q rejected request_id=%s: %v", action, requestID(r), err)
+		} else {
+			logging.Error(logging.TagWeb, "action %q failed request_id=%s: %v", action, requestID(r), err)
+		}
 		screen.Err = err
 		screen.mu.Unlock()
 		status := http.StatusOK
-		if errors.Is(err, core.ErrStaleItem) || errors.Is(err, core.ErrNotAvailable) ||
-			errors.Is(err, core.ErrUnsafePath) {
+		if expected {
 			status = http.StatusConflict
 		}
 		s.finishCommand(w, r, session, screen, status)
@@ -341,10 +346,10 @@ func (s *Server) commandAction(w http.ResponseWriter, r *http.Request, session *
 	screen.mu.Unlock()
 
 	if action == "delete" {
-		log.Printf("[Torrentino]: web: audit delete user=%q kind=%s item=%q key=%q request_id=%s",
+		logging.Warn(logging.TagWeb, "audit delete user=%q kind=%s item=%q key=%q request_id=%s",
 			session.User, screen.Kind, displayName, key, requestID(r))
 	}
-	log.Printf("[Torrentino]: web: action %q ok user=%q request_id=%s", action, session.User, requestID(r))
+	logging.Info(logging.TagWeb, "action %q ok user=%q request_id=%s", action, session.User, requestID(r))
 	s.finishCommand(w, r, session, screen, http.StatusOK)
 }
 

@@ -3,10 +3,10 @@ package web
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"time"
 
+	"torrentino/common/logging"
 	"torrentino/core"
 )
 
@@ -34,7 +34,7 @@ func (s *Server) handleDownloads(w http.ResponseWriter, r *http.Request, session
 	screen.mu.Unlock()
 
 	if err != nil {
-		log.Printf("[Torrentino]: web: downloads reload failed request_id=%s: %v", requestID(r), err)
+		logging.Error(logging.TagWeb, "downloads reload failed request_id=%s: %v", requestID(r), err)
 	}
 	s.renderScreen(w, r, session, screen, http.StatusOK)
 }

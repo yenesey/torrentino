@@ -2,10 +2,10 @@ package web
 
 import (
 	"errors"
-	"log"
 	"mime"
 	"net/http"
 
+	"torrentino/common/logging"
 	"torrentino/core"
 )
 
@@ -41,7 +41,7 @@ func (s *Server) handleFindTorrent(w http.ResponseWriter, r *http.Request, sessi
 
 	data, err := s.service.TorrentFile(r.Context(), copied.Link)
 	if err != nil {
-		log.Printf("[Torrentino]: web: torrent download request_id=%s: %v", requestID(r), err)
+		logging.Error(logging.TagWeb, "torrent download request_id=%s: %v", requestID(r), err)
 		switch {
 		case errors.Is(err, core.ErrTorrentTooLarge):
 			http.Error(w, "torrent file is too large", http.StatusRequestEntityTooLarge)

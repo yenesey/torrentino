@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"torrentino/common"
+	"torrentino/common/logging"
 )
 
 type contextKey int
@@ -143,9 +143,19 @@ func (s *Server) accessLog(next http.Handler) http.Handler {
 		if !interesting {
 			return
 		}
-		log.Printf("[Torrentino]: web: ip=%s user=%q method=%s path=%s status=%d dur=%s request_id=%s",
+		fields := []any{
 			s.clientIP(r), recorder.user, r.Method, path, status,
-			time.Since(start).Round(time.Millisecond), requestID(r))
+			time.Since(start).Round(time.Millisecond), requestID(r),
+		}
+		const format = "ip=%s user=%q method=%s path=%s status=%d dur=%s request_id=%s"
+		switch {
+		case status >= http.StatusInternalServerError:
+			logging.Error(logging.TagWeb, format, fields...)
+		case status >= http.StatusBadRequest:
+			logging.Warn(logging.TagWeb, format, fields...)
+		default:
+			logging.Info(logging.TagWeb, format, fields...)
+		}
 	})
 }
 

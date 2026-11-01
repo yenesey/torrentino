@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -18,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 
 	"torrentino/common"
+	"torrentino/common/logging"
 )
 
 type jackettTime struct {
@@ -215,7 +215,7 @@ func Query(str string, indexers []string) (*[]Result, error) {
 func init() {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		log.Fatalf("error creating cookie jar %s", err.Error())
+		logging.Fatalf(logging.TagNone, "error creating cookie jar %s", err.Error())
 	}
 	client = &http.Client{
 		Jar: jar,

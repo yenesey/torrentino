@@ -1,9 +1,10 @@
 package web
 
 import (
-	"log"
 	"net/http"
 	"time"
+
+	"torrentino/common/logging"
 )
 
 func (s *Server) handleTorrserver(w http.ResponseWriter, r *http.Request, session *Session) {
@@ -34,7 +35,7 @@ func (s *Server) handleTorrserver(w http.ResponseWriter, r *http.Request, sessio
 	screen.mu.Unlock()
 
 	if err != nil {
-		log.Printf("[Torrentino]: web: torrserver reload failed request_id=%s: %v", requestID(r), err)
+		logging.Error(logging.TagWeb, "torrserver reload failed request_id=%s: %v", requestID(r), err)
 	}
 	s.renderScreen(w, r, session, screen, http.StatusOK)
 }

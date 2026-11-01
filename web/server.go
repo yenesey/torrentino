@@ -5,13 +5,13 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
-	"log"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"torrentino/common"
+	"torrentino/common/logging"
 	"torrentino/core"
 )
 
@@ -167,10 +167,10 @@ func (s *Server) Start() error {
 			err = s.httpServer.Serve(listener)
 		}
 		if err != nil && err != http.ErrServerClosed {
-			log.Printf("[Torrentino]: web server stopped: %v", err)
+			logging.Error(logging.TagWeb, "web server stopped: %v", err)
 		}
 	}()
-	log.Printf("[Torrentino]: web listening on %s%s (tls=%v)", address, s.base.Base(), useTLS)
+	logging.Info(logging.TagWeb, "web listening on %s%s (tls=%v)", address, s.base.Base(), useTLS)
 	return nil
 }
 

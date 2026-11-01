@@ -19,6 +19,7 @@ import (
 	"github.com/go-telegram/bot/models"
 
 	"torrentino/common"
+	"torrentino/common/logging"
 	"torrentino/common/password"
 	"torrentino/core"
 	"torrentino/telegram/downloads"
@@ -28,27 +29,29 @@ import (
 )
 
 func main() {
-	hashPassword := flag.Bool("hash-password", false, "read a password from stdin and print a web.users password-hash")
-	flag.Parse()
-	if *hashPassword {
-		if err := printPasswordHash(); err != nil {
-			log.Fatalf("[Torrentino]: %s", err)
-		}
-		return
-	}
-
-	common.MustLoadSettings()
-
-	// The Telegram client library logs the request URL on network errors, and
-	// that URL contains the bot token. Wrap the standard logger so no token
-	// reaches /var/log/torrentino.log.
+	// Install the log writer before anything can log: configuration errors and
+	// third-party startup messages must use the same format as the rest of the
+	// application. The Telegram client library logs the request URL on network
+	// errors, and that URL contains the bot token, so the writer also redacts
+	// it before the line reaches /var/log/torrentino.log.
 	log.SetFlags(0)
 	log.SetOutput(redactingWriter{
 		out:     timestampWriter{out: os.Stderr},
 		pattern: regexp.MustCompile(`bot[0-9]+:[A-Za-z0-9_-]+`),
 	})
 
-	log.Println("[Torrentino]: startup")
+	hashPassword := flag.Bool("hash-password", false, "read a password from stdin and print a web.users password-hash")
+	flag.Parse()
+	if *hashPassword {
+		if err := printPasswordHash(); err != nil {
+			logging.Fatalf(logging.TagNone, "%s", err)
+		}
+		return
+	}
+
+	common.MustLoadSettings()
+
+	logging.Info(logging.TagNone, "startup")
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -58,22 +61,26 @@ func main() {
 		var err error
 		webServer, err = web.NewServer(core.Default)
 		if err != nil {
-			log.Fatalf("[Torrentino]: web startup failed: %s", err)
+			logging.Fatalf(logging.TagWeb, "web startup failed: %s", err)
 		}
 		// The web server starts before Telegram: even if the bot token or the
 		// Telegram API is broken, the UI is already reachable.
 		if err := webServer.Start(); err != nil {
-			log.Fatalf("[Torrentino]: web startup failed: %s", err)
+			logging.Fatalf(logging.TagWeb, "web startup failed: %s", err)
 		}
 	}
 
 	opts := []bot.Option{
 		bot.WithSkipGetMe(),
+		bot.WithErrorsHandler(func(err error) {
+			logging.Error(logging.TagTGBot, "%v", err)
+		}),
 		bot.WithMiddlewares(func(next bot.HandlerFunc) bot.HandlerFunc {
 			return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 				if (update != nil) && (update.Message != nil) {
 					if slices.Index(common.Settings.UsersList, update.Message.From.ID) == -1 {
-						log.Printf("%d (%s) say: %s", update.Message.From.ID, update.Message.From.Username, update.Message.Text)
+						logging.Warn(logging.TagTGBot, "%d (%s) say: %s",
+							update.Message.From.ID, update.Message.From.Username, update.Message.Text)
 						return
 					}
 				}
@@ -88,9 +95,9 @@ func main() {
 	b, botErr := bot.New(common.Settings.TelegramAPIToken, opts...)
 	if botErr != nil {
 		if !common.Settings.Web.Enabled {
-			log.Fatal(botErr)
+			logging.Fatalf(logging.TagTGBot, "%s", botErr)
 		}
-		log.Printf("[Torrentino]: Telegram is unavailable (%v); running web-only", botErr)
+		logging.Warn(logging.TagTGBot, "Telegram is unavailable (%v); running web-only", botErr)
 		<-ctx.Done()
 	} else {
 		b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
@@ -109,7 +116,7 @@ func main() {
 			case <-ctx.Done():
 			case <-botDone:
 				if ctx.Err() == nil {
-					log.Print("[Torrentino]: Telegram bot stopped; keeping the web interface running")
+					logging.Warn(logging.TagTGBot, "Telegram bot stopped; keeping the web interface running")
 					<-ctx.Done()
 				}
 			}
@@ -122,7 +129,7 @@ func main() {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer shutdownCancel()
 		if err := webServer.Shutdown(shutdownCtx); err != nil {
-			log.Printf("[Torrentino]: web shutdown: %v", err)
+			logging.Error(logging.TagWeb, "web shutdown: %v", err)
 		}
 	}
 }

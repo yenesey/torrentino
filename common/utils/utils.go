@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"runtime"
@@ -12,6 +11,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
+	"torrentino/common/logging"
 )
 
 var sizes = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB"}
@@ -44,7 +45,7 @@ func Now() time.Time {
 func TimeTrack(start time.Time, name string) {
 	// usage: defer utils.TimeTrack(utils.Now(), "tag")   -- on the begin of any func
 	elapsed := time.Since(start)
-	fmt.Printf("%s took %s\n", name, elapsed)
+	logging.Info(logging.TagNone, "%s took %s", name, elapsed)
 }
 
 type FileInfo struct {
@@ -96,7 +97,23 @@ func LogError(err error) {
 	_, fileName := path.Split(file)
 	parts := strings.Split(runtime.FuncForPC(pc).Name(), ".")
 	funcName := strings.Join(parts[1:], ".")
-	log.Printf("[%s/%s(%s)] %s: %s", parts[0][11:], fileName, strconv.Itoa(line), funcName, err)
+	pkg := strings.TrimPrefix(parts[0], "torrentino/")
+	logging.Error(logTag(pkg), "%s/%s:%d %s: %s", pkg, fileName, line, funcName, err)
+}
+
+// logTag maps the package that called LogError to the interface tag. Shared
+// packages (core, common/list, common/settings) have no tag: the same code is
+// reached from both the web UI and the Telegram bot.
+func logTag(pkg string) logging.Tag {
+	switch {
+	case pkg == "web" || strings.HasPrefix(pkg, "web/"):
+		return logging.TagWeb
+	case pkg == "telegram" || strings.HasPrefix(pkg, "telegram/"),
+		pkg == "common/paginator" || strings.HasPrefix(pkg, "common/paginator/"):
+		return logging.TagTGBot
+	default:
+		return logging.TagNone
+	}
 }
 
 func WithTimeout(cbfn func() error, timeout time.Duration) error {
