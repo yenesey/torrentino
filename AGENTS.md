@@ -29,7 +29,7 @@
 go build ./...          # сборка (проверено: OK)
 go vet ./...            # статический анализ (проверено: чисто)
 go test -race ./...     # тесты (проходят; web-тесты медленные из-за PBKDF2)
-go build -v -ldflags "-s -w"   # релизная сборка (как в update-service.sh)
+go build -v -ldflags "-s -w"   # релизная сборка (как в deploy/update-service.sh)
 ```
 
 Запуск — **только из каталога, где лежит `settings.json`**: конфиг читается по
@@ -101,8 +101,12 @@ telegram/
   search/search.go          Telegram-рендер поиска; домен — core.Service
   downloads/downloads.go    Telegram-рендер списка загрузок, автообновление раз в 5 с
   torrserver/torrserver.go  Telegram-рендер Torrserver
-torrentino.service          systemd-юнит (WorkingDirectory=/opt/torrentino)
-update-service.sh           сборка → stop → mv в /opt/torrentino → start (нужен root)
+deploy/
+  nginx/torrentino.conf     шаблон nginx
+  logrotate/torrentino.conf шаблон logrotate (copytruncate)
+  settings.example.json     пример конфига
+  torrentino.service        systemd-юнит (WorkingDirectory=/opt/torrentino)
+  update-service.sh         сборка → stop → mv в /opt/torrentino → start (нужен root)
 ```
 
 ## Архитектура
@@ -298,9 +302,16 @@ htmx.min.js}`. Все действия — POST с CSRF; GET ничего не �
 
 ## Деплой
 
-`torrentino.service` ожидает бинарник в `/opt/torrentino`, логи пишутся в
-`/var/log/torrentino.log`, `Restart=always`. Обновление — `sudo ./update-service.sh`
+`deploy/torrentino.service` ожидает бинарник в `/opt/torrentino`, логи пишутся в
+`/var/log/torrentino.log`, `Restart=always`. Обновление — `sudo ./deploy/update-service.sh`
 (собирает с `-ldflags "-s -w"`, останавливает сервис, подменяет бинарник, запускает).
+Скрипт определяет корень репозитория по своему расположению, поэтому его можно
+запускать из любого каталога. Шаблон юнита устанавливается отдельно:
+
+```bash
+sudo install -m 0644 deploy/torrentino.service /etc/systemd/system/torrentino.service
+sudo systemctl daemon-reload
+```
 
 Ротация лога: systemd держит `/var/log/torrentino.log` открытым
 (`StandardOutput=append:`), поэтому конфиг logrotate обязан использовать
